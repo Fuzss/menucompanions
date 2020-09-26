@@ -18,13 +18,16 @@ import java.util.stream.Stream;
 public class MenuEntityProvider {
 
     private static final List<MenuEntityEntry> DEFAULT_MENU_ENTRIES = Lists.newArrayList(
-            new MenuEntityEntry(EntityType.BOAT, "{Passengers:[{id:enderman}]}"),
-            new MenuEntityEntry(EntityType.PLAYER),
-//            new MenuEntityEntry(EntityType.ZOMBIE, "{HandItems:[{Count:1,id:diamond_sword},{Count:1,id:shield}],ArmorItems:[{Count:1,id:diamond_boots},{Count:1,id:diamond_leggings},{Count:1,id:diamond_chestplate},{Count:1,id:diamond_helmet}]}"),
-//            new MenuEntityEntry(EntityType.SPIDER, "{Passengers:[{id:skeleton,HandItems:[{Count:1,id:bow},{}]}]}"),
+            new MenuEntityEntry(EntityType.WITHER_SKELETON, "{CustomName:'{\"text\":\"Betsy\"}'}"),
+            new MenuEntityEntry(EntityType.IRON_GOLEM),
+            new MenuEntityEntry(EntityType.WOLF, "{Sitting:1,Owner:Fuzs}"),
+            new MenuEntityEntry(EntityType.CREEPER, "{powered:1}"),
+            new MenuEntityEntry(EntityType.BOAT, "{Passengers:[{id:enderman,carriedBlockState:{Name:grass_block}}]}"),
+            new MenuEntityEntry(EntityType.ZOMBIE, "{HandItems:[{Count:1,id:diamond_sword},{Count:1,id:shield}],ArmorItems:[{Count:1,id:diamond_boots},{Count:1,id:diamond_leggings},{Count:1,id:diamond_chestplate},{Count:1,id:diamond_helmet}]}"),
+            new MenuEntityEntry(EntityType.SPIDER, "{Passengers:[{id:skeleton,HandItems:[{Count:1,id:bow},{}]}]}"),
             new MenuEntityEntry(EntityType.SPIDER, "{Passengers:[{id:skeleton,Passengers:[{id:zombie}]}]}"),
             new MenuEntityEntry(EntityType.CHICKEN, "{Passengers:[{id:zombie,IsBaby:1}]}"),
-            new MenuEntityEntry(EntityType.STRIDER, "{Saddle:1,Passengers:[{id:zombified_piglin,HandItems:[{Count:1,id:warped_fungus_on_a_stick},{}]}]}")
+            new MenuEntityEntry(EntityType.STRIDER, "{Saddle:1,Passengers:[{id:zombified_piglin,IsBaby:1,HandItems:[{Count:1,id:warped_fungus_on_a_stick},{}]}]}")
     );
 
     private static final List<MenuEntityEntry> MENU_ENTRIES = Lists.newArrayList();

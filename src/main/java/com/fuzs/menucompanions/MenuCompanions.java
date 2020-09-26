@@ -4,13 +4,8 @@ import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
 import com.fuzs.menucompanions.client.handler.MenuEntityProvider;
 import com.fuzs.menucompanions.config.ConfigManager;
 import com.fuzs.menucompanions.config.JSONConfigUtil;
-import com.fuzs.menucompanions.util.CommandRegisterer;
-import com.mojang.brigadier.Command;
-import net.minecraft.command.Commands;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.ExtensionPoint;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -32,7 +27,7 @@ public class MenuCompanions {
     public static final String NAME = "Menu Companions";
     public static final Logger LOGGER = LogManager.getLogger(MenuCompanions.NAME);
 
-    private final String jsonConfigName = "mobs.json";
+    public static final String JSON_CONFIG_NAME = "mobs.json";
     private final MenuEntityHandler handler = new MenuEntityHandler();
 
     @SuppressWarnings("Convert2Lambda")
@@ -48,7 +43,7 @@ public class MenuCompanions {
             public void run() {
 
                 // this also creates the folder for the default Forge config
-                JSONConfigUtil.load(MenuCompanions.this.jsonConfigName, MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
+                JSONConfigUtil.load(JSON_CONFIG_NAME, MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
                 ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
                 MenuCompanions.this.handler.setup(builder);
                 ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, builder.build(), ConfigManager.configNameForFolder(ModConfig.Type.CLIENT, MODID));
@@ -65,22 +60,11 @@ public class MenuCompanions {
     private void onClientSetup(final FMLClientSetupEvent evt) {
 
         this.handler.load();
-        MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
     }
 
     private void onLoadComplete(final FMLLoadCompleteEvent evt) {
 
         ConfigManager.sync();
-    }
-
-    private void onRegisterCommands(final RegisterCommandsEvent evt) {
-
-        evt.getDispatcher().register(Commands.literal(MenuCompanions.MODID).then(Commands.literal("reload").executes(ctx -> {
-
-            CommandRegisterer.handleReload(this.jsonConfigName, "command.reload.config", MenuEntityProvider::serialize, MenuEntityProvider::deserialize, ctx);
-
-            return Command.SINGLE_SUCCESS;
-        })));
     }
 
 }

@@ -3,6 +3,8 @@ package com.fuzs.menucompanions.client.handler;
 import com.fuzs.menucompanions.MenuCompanions;
 import com.fuzs.menucompanions.client.util.DrawEntityUtil;
 import com.fuzs.menucompanions.client.util.MenuEntityEntry;
+import com.fuzs.menucompanions.config.ConfigManager;
+import com.fuzs.menucompanions.config.JSONConfigUtil;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.mojang.authlib.GameProfile;
@@ -11,19 +13,26 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.player.RemoteClientPlayerEntity;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.screen.MainMenuScreen;
-import net.minecraft.client.gui.screen.inventory.InventoryScreen;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.button.ImageButton;
 import net.minecraft.client.network.play.ClientPlayNetHandler;
 import net.minecraft.client.network.play.NetworkPlayerInfo;
 import net.minecraft.client.renderer.IRenderTypeBuffer;
 import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.client.world.ClientWorld;
-import net.minecraft.entity.*;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerModelPart;
 import net.minecraft.network.play.server.SPlayerListItemPacket;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.registry.DynamicRegistries;
 import net.minecraft.util.text.ITextComponent;
-import net.minecraft.world.*;
+import net.minecraft.util.text.TranslationTextComponent;
+import net.minecraft.world.Difficulty;
+import net.minecraft.world.DimensionType;
+import net.minecraft.world.GameType;
+import net.minecraft.world.World;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderNameplateEvent;
@@ -31,28 +40,38 @@ import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.fml.config.ModConfig;
 import org.apache.commons.lang3.tuple.Pair;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public class MenuEntityHandler {
+
+    private static final ResourceLocation RELOAD_TEXTURES = new ResourceLocation(MenuCompanions.MODID, "textures/gui/reload.png");
 
     private final Minecraft mc = Minecraft.getInstance();
     private final List<Consumer<? extends Event>> events = Lists.newArrayList();
     private final int maxAttempts = 10;
 
+    private ReloadMode reloadMode;
+    private MenuEntityEntry.MenuSide menuSide;
+    private ForgeConfigSpec.ConfigValue<List<String>> blacklist;
+
     private ClientWorld renderWorld;
-    private final EnumMap<MenuEntityEntry.MenuSide, Pair<Entity, Boolean>> renderEntities = Maps.newEnumMap(MenuEntityEntry.MenuSide.class);
+    private final EnumMap<MenuEntityEntry.MenuSide, Pair<Entity, Float>> renderEntities = Maps.newEnumMap(MenuEntityEntry.MenuSide.class);
+    private final Map<Entity, Boolean> renderNameplates = Maps.newHashMap();
+
     private LivingEntity renderEntity;
 
     public void setup(ForgeConfigSpec.Builder builder) {
 
+        this.addListener(this::onGuiInit);
         this.addListener(this::onGuiOpen);
         this.addListener(this::onDrawScreen);
         this.addListener(this::onClientTick);
@@ -77,6 +96,13 @@ public class MenuEntityHandler {
 
     private void setupConfig(ForgeConfigSpec.Builder builder) {
 
+        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("When to show reload button on main menu. Requires a the control key  to be pressed by default.").defineEnum("Reload Button", ReloadMode.CONTROL), v -> this.reloadMode = v);
+        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Which side entities can be shown at.").defineEnum("Entity Side", MenuEntityEntry.MenuSide.BOTH), v -> {
+
+            this.menuSide = v;
+            this.populateSides();
+        });
+        this.blacklist = builder.comment("Blacklist for excluding entities. Entries will be added automatically when problematic entities are detected.").define("Blacklist", Lists.newArrayList("hopp", "hupp", "hipp"));
     }
 
     private Optional<ClientWorld> getRenderWorld() {
@@ -101,18 +127,57 @@ public class MenuEntityHandler {
             return new ClientWorld(clientPlayNetHandler, worldInfo, World.OVERWORLD, dimensionType, 3, this.mc::getProfiler, this.mc.worldRenderer, false, 0);
         } catch (Exception e) {
 
-            MenuCompanions.LOGGER.error(e);
+            MenuCompanions.LOGGER.error("Unable to create rendering world: {}", e.getMessage());
         }
 
         this.unregister();
         return null;
     }
 
+    private void onGuiInit(final GuiScreenEvent.InitGuiEvent.Post evt) {
+
+        if (evt.getGui() instanceof MainMenuScreen) {
+
+            // TODO
+            this.blacklist.set(Lists.newArrayList("hi", "ho", "ha"));
+
+            evt.addWidget(new ImageButton(evt.getGui().width / 2 + 104 + 24, evt.getGui().height / 4 + 48 + 72 + 12, 20, 20, 0, 0, 20, RELOAD_TEXTURES, 32, 64, (p_213088_1_) -> {
+
+                JSONConfigUtil.load(MenuCompanions.JSON_CONFIG_NAME, MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
+                MenuCompanions.LOGGER.info("Reloaded config file at {}", MenuCompanions.JSON_CONFIG_NAME);
+
+                this.populateSides();
+            }, new TranslationTextComponent("narrator.button.reload")) {
+
+                @Override
+                public void render(@Nonnull MatrixStack matrixStack, int mouseX, int mouseY, float partialTicks) {
+
+                    this.visible = MenuEntityHandler.this.reloadMode == ReloadMode.CONTROL && Screen.hasControlDown() || MenuEntityHandler.this.reloadMode == ReloadMode.ALWAYS;
+                    super.render(matrixStack, mouseX, mouseY, partialTicks);
+                }
+
+            });
+        }
+    }
+
     private void onGuiOpen(final GuiOpenEvent evt) {
 
         if (evt.getGui() instanceof MainMenuScreen) {
 
+            this.populateSides();
+        }
+    }
+
+    private void populateSides() {
+
+        this.renderNameplates.clear();
+        if (this.menuSide != MenuEntityEntry.MenuSide.RIGHT) {
+
             this.setMenuSide(MenuEntityEntry.MenuSide.LEFT);
+        }
+
+        if (this.menuSide != MenuEntityEntry.MenuSide.LEFT) {
+
             this.setMenuSide(MenuEntityEntry.MenuSide.RIGHT);
         }
     }
@@ -121,17 +186,17 @@ public class MenuEntityHandler {
 
         if (evt.getGui() instanceof MainMenuScreen) {
 
-            this.runForSides((side, entity) -> {
+            this.runForSides((side, pair) -> {
 
+                Entity entity = pair.getLeft();
+                int scale = (int) (pair.getRight() * 30);
                 int posX = (int) (evt.getGui().width * (side == MenuEntityEntry.MenuSide.LEFT ? 1.0F : 6.0F) / 7.0F);
                 int posY = evt.getGui().height / 4 + 5 * 24;
-                int scale = 30;
                 DrawEntityUtil.drawEntityOnScreen(posX, posY, scale, -evt.getMouseX() + posX, -evt.getMouseY() + posY - 50, entity);
 
                 for (Entity passenger : entity.getRecursivePassengers()) {
 
                     posY -= scale * (passenger.getPosY() - passenger.getRidingEntity().getPosY());
-//                    posY -= scale * (passenger.getRidingEntity().getMountedYOffset() + passenger.getYOffset());
                     DrawEntityUtil.drawEntityOnScreen(posX, posY, scale, -evt.getMouseX() + posX, -evt.getMouseY() + posY - 50, passenger);
                 }
             });
@@ -142,14 +207,17 @@ public class MenuEntityHandler {
 
         if (evt.phase != TickEvent.Phase.END && this.mc.currentScreen instanceof MainMenuScreen) {
 
-            this.runForSides((side, entity) -> {
+            this.runForSides((side, pair) -> {
 
+                Entity entity = pair.getLeft();
+                // ensures animations run properly since ageInTicks relies on it
                 entity.ticksExisted++;
                 if (entity.isBeingRidden()) {
 
                     for (Entity passenger : entity.getRecursivePassengers()) {
 
                         passenger.ticksExisted++;
+                        // some mobs like chicken shift their rider around on x and z axis depending on their facing direction
                         passenger.getRidingEntity().updatePassenger(passenger);
                     }
                 }
@@ -159,16 +227,14 @@ public class MenuEntityHandler {
 
     private void onRenderNameplate(final RenderNameplateEvent evt) {
 
-        // TODO
-        evt.setResult(Event.Result.DENY);
-        this.renderEntities.values().stream().filter(pair -> pair.getLeft() == evt.getEntity()).findFirst().ifPresent(pair -> {
+        if (this.renderNameplates.containsKey(evt.getEntity())) {
 
             evt.setResult(Event.Result.DENY);
-            if (pair.getRight()) {
+            if (this.renderNameplates.get(evt.getEntity())) {
 
                 this.renderName(evt.getEntity(), evt.getContent(), evt.getMatrixStack(), evt.getRenderTypeBuffer(), evt.getPackedLight(), evt.getEntityRenderer().getRenderManager());
             }
-        });
+        }
     }
 
     protected void renderName(Entity entityIn, ITextComponent displayNameIn, MatrixStack matrixStackIn, IRenderTypeBuffer bufferIn, int packedLightIn, EntityRendererManager renderManager) {
@@ -204,37 +270,21 @@ public class MenuEntityHandler {
                     Entity entity = entry.create(this.getRenderWorld().get());
                     if (entity != null) {
 
-                        this.renderEntities.put(side, Pair.of(entity, entry.showNameplate()));
+                        this.renderEntities.put(side, Pair.of(entity, entry.getScale(entity)));
+                        entity.getSelfAndPassengers().forEach(passenger -> this.renderNameplates.put(passenger, entry.showNameplate()));
                         return;
                     } else {
 
-                        MenuCompanions.LOGGER.error("Entity is null");
+                        MenuCompanions.LOGGER.warn("Unable to create entity: {}", NullPointerException.class.getSimpleName());
                     }
                 }
             } catch (Exception e) {
 
-                MenuCompanions.LOGGER.error(e);
+                MenuCompanions.LOGGER.warn("Unable to create entity: {}", e.getMessage());
             }
         }
 
         this.renderEntities.put(side, null);
-    }
-
-    private void setRenderEntityRandom() {
-
-        List<EntityType<?>> entityTypes = ForgeRegistries.ENTITIES.getValues().stream().filter(type -> type.getClassification() != EntityClassification.MISC).collect(Collectors.toList());
-        Collections.shuffle(entityTypes);
-        Optional<EntityType<?>> optionalLivingEntity = entityTypes.stream().findFirst();
-        optionalLivingEntity.ifPresent(type -> this.renderEntity = (LivingEntity) type.create(this.getRenderWorld().get()));
-        try {
-
-            if (this.renderEntity instanceof MobEntity) {
-
-                ((MobEntity) this.renderEntity).onInitialSpawn(null, new DifficultyInstance(Difficulty.HARD, 100000L, 100000, 1.0F), SpawnReason.COMMAND, null, null);
-            }
-        } catch (Exception ignored) {
-
-        }
     }
 
     private void setRenderEntityPlayer() {
@@ -275,20 +325,28 @@ public class MenuEntityHandler {
         };
     }
 
-    private void runForSides(BiConsumer<MenuEntityEntry.MenuSide, Entity> action) {
+    private void runForSides(BiConsumer<MenuEntityEntry.MenuSide, Pair<Entity, Float>> action) {
 
         this.renderEntities.forEach((key, value) -> {
 
             try {
 
-                action.accept(key, value.getLeft());
+                // might be null when side is disabled
+                if (value != null) {
+
+                    action.accept(key, value);
+                }
             } catch (Exception e) {
 
-                e.printStackTrace();
-                MenuCompanions.LOGGER.error(e);
+                MenuCompanions.LOGGER.error("Unable to run for side \"{}\": {}", key, e.getMessage());
                 this.setMenuSide(key);
             }
         });
+    }
+
+    private enum ReloadMode {
+
+        NEVER, CONTROL, ALWAYS
     }
 
 }
