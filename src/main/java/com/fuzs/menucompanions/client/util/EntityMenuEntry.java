@@ -18,9 +18,15 @@ import java.util.stream.Collectors;
 
 public class EntityMenuEntry {
 
+    private static final String DISPLAY_NAME = "display";
+    private static final String PROPERTIES_NAME = "properties";
+
     @Nullable
     private final EntityType<?> type;
     private final CompoundNBT compound;
+    private final boolean tick;
+    private final int properties;
+    private final boolean particles;
     private final float scale;
     private final int xOffset;
     private final int yOffset;
@@ -29,10 +35,13 @@ public class EntityMenuEntry {
     private final MenuSide side;
     private final String comment;
 
-    private EntityMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, float scale, int xOffset, int yOffset, boolean nameplate, int weight, MenuSide side, String comment) {
+    private EntityMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, boolean tick, int properties, boolean particles, float scale, int xOffset, int yOffset, boolean nameplate, int weight, MenuSide side, String comment) {
 
         this.type = type;
         this.compound = compound;
+        this.tick = tick;
+        this.properties = properties;
+        this.particles = particles;
         this.scale = scale;
         this.xOffset = xOffset;
         this.yOffset = yOffset;
@@ -59,20 +68,39 @@ public class EntityMenuEntry {
             return this.scale;
         }
 
-        return getScale(entity.getHeight());
+        return getScale(entity.getWidth(), entity.getHeight());
     }
 
-    private static float getScale(float height) {
+    private static float getScale(float width, float height) {
 
-        final float min = 0.6F;
-        final float max = 2.4F;
+        final float minWidth = 1.0F / 2.0F;
+        final float maxWidth = 2.0F / 1.0F;
+        final float midWidth = (minWidth + maxWidth) / 2.0F;
+        final float minHeight = 1.0F / 3.0F;
+        final float maxHeight = 4.0F / 3.0F;
+        final float midHeight = (minHeight + maxHeight) / 2.0F;
 
-        if (height < min) {
+        width /= 0.6F;
+        height /= 1.8F;
 
-            return min / height;
-        } else if (height > max) {
+        if (Math.abs(width / midWidth - 1.0F) < Math.abs(height / midHeight - 1.0F)) {
 
-            return max / height;
+            if (height < minHeight) {
+
+                return minHeight / height;
+            } else if (height > maxHeight) {
+
+                return maxHeight / height;
+            }
+        } else {
+
+            if (width < minWidth) {
+
+                return minWidth / width;
+            } else if (width > maxWidth) {
+
+                return maxWidth / width;
+            }
         }
 
         return 1.0F;
@@ -96,7 +124,7 @@ public class EntityMenuEntry {
     @Nullable
     public Entity create(World worldIn) {
 
-        return CreateEntityUtil.loadEntity(this.getEntityType(), this.compound, worldIn);
+        return CreateEntityUtil.loadEntity(this.getEntityType(), this.compound, worldIn, this.properties);
     }
 
     @SuppressWarnings("OptionalGetWithoutIsPresent")
@@ -114,7 +142,6 @@ public class EntityMenuEntry {
         return types.stream().findFirst().get();
     }
 
-    @Nullable
     public JsonElement serialize() {
 
         JsonObject jsonobject = new JsonObject();
@@ -124,17 +151,45 @@ public class EntityMenuEntry {
         }
 
         IEntrySerializer.serializeEntityType(jsonobject, this.type);
+        jsonobject.addProperty("weight", this.weight);
+        jsonobject.add(DISPLAY_NAME, this.serializeDisplay());
+        jsonobject.add(PROPERTIES_NAME, this.serializeProperties());
+
+        return jsonobject;
+    }
+
+    private JsonObject serializeDisplay() {
+
+        JsonObject jsonobject = new JsonObject();
         if (this.isTypeSet()) {
 
-            jsonobject.addProperty("nbt", IEntrySerializer.serializeNBT(this.compound));
             jsonobject.addProperty("scale", this.scale);
             jsonobject.addProperty("xOffset", this.xOffset);
             jsonobject.addProperty("yOffset", this.yOffset);
         }
 
         jsonobject.addProperty("nameplate", this.nameplate);
-        jsonobject.addProperty("weight", this.weight);
+        jsonobject.addProperty("particles", this.particles);
         IEntrySerializer.serializeEnum(jsonobject, "side", this.side);
+
+        return jsonobject;
+    }
+
+    private JsonObject serializeProperties() {
+
+        JsonObject jsonobject = new JsonObject();
+        if (this.isTypeSet()) {
+
+            jsonobject.addProperty("nbt", IEntrySerializer.serializeNBT(this.compound));
+        }
+
+        if (!this.isTypeSet() || this.type.getClassification() != EntityClassification.MISC) {
+
+            jsonobject.addProperty("tick", this.tick);
+        }
+
+        jsonobject.addProperty("onGround", PropertyFlags.ON_GROUND.read(this.properties));
+        jsonobject.addProperty("inWater", PropertyFlags.IN_WATER.read(this.properties));
 
         return jsonobject;
     }
@@ -144,32 +199,46 @@ public class EntityMenuEntry {
 
         if (element != null && element.isJsonObject()) {
 
+            Builder builder = new Builder();
             JsonObject jsonobject = JSONUtils.getJsonObject(element, "mob_entry");
-            EntityType<?> id = IEntrySerializer.deserializeEntityType(jsonobject);
-            boolean nameplate = JSONUtils.getBoolean(jsonobject, "nameplate");
-            int weight = JSONUtils.getInt(jsonobject, "weight");
-            MenuSide side = IEntrySerializer.deserializeEnum(jsonobject, "side", MenuSide.class, null);
+            JsonObject displayobject = JSONUtils.getJsonObject(jsonobject, DISPLAY_NAME);
+            JsonObject propertiesobject = JSONUtils.getJsonObject(jsonobject, PROPERTIES_NAME);
 
+            EntityType<?> id = IEntrySerializer.deserializeEntityType(jsonobject);
+            builder.setType(id);
+            builder.setWeight(JSONUtils.getInt(jsonobject, "weight"));
+            builder.setNameplate(JSONUtils.getBoolean(displayobject, "nameplate"));
+            builder.setParticles(JSONUtils.getBoolean(displayobject, "particles"));
+            builder.setSide(IEntrySerializer.deserializeEnum(displayobject, "side", MenuSide.class, null));
+            builder.setOnGround(JSONUtils.getBoolean(propertiesobject, "onGround"));
+            builder.setInWater(JSONUtils.getBoolean(propertiesobject, "inWater"));
             if (id != null) {
 
-                String nbt = JSONUtils.getString(jsonobject, "nbt");
-                float scale = JSONUtils.getFloat(jsonobject, "scale");
-                int xOffset = JSONUtils.getInt(jsonobject, "xOffset");
-                int yOffset = JSONUtils.getInt(jsonobject, "yOffset");
-
-                return new Builder().setType(id).setNameplate(nameplate).setWeight(weight).setSide(side).setNbt(nbt).setScale(scale).setXOffset(xOffset).setYOffset(yOffset).build();
+                builder.setScale(JSONUtils.getFloat(displayobject, "scale"));
+                builder.setXOffset(JSONUtils.getInt(displayobject, "xOffset"));
+                builder.setYOffset(JSONUtils.getInt(displayobject, "yOffset"));
+                builder.setNbt(JSONUtils.getString(propertiesobject, "nbt"));
             }
 
-            return new Builder().setNameplate(nameplate).setWeight(weight).setSide(side).build();
+            if (id == null || id.getClassification() != EntityClassification.MISC) {
+
+                builder.setTick(JSONUtils.getBoolean(propertiesobject, "tick"));
+            }
+
+            return builder.build();
         }
 
         return null;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public static class Builder {
 
         private EntityType<?> type = null;
         private String nbt = "";
+        private boolean tick = true;
+        private int properties = PropertyFlags.ON_GROUND.write(PropertyFlags.IN_WATER.write(0));
+        private boolean particles = true;
         private float scale = 1.0F;
         private int xOffset = 0;
         private int yOffset = 0;
@@ -181,10 +250,18 @@ public class EntityMenuEntry {
         public EntityMenuEntry build() {
 
             CompoundNBT compound = type != null ? IEntrySerializer.deserializeNbt(this.nbt, this.type) : new CompoundNBT();
-            this.scale = this.type != null ? getScale(this.type.getHeight()) : 1.0F;
             this.weight = Math.max(1, this.weight);
+            if (this.type != null) {
 
-            return new EntityMenuEntry(this.type, compound, this.scale, this.xOffset, this.yOffset, this.nameplate, this.weight, this.side, this.comment);
+                this.scale = this.scale != 1.0F ? this.scale : getScale(this.type.getWidth(), this.type.getHeight());
+            } else {
+
+                this.scale = 1.0F;
+                this.xOffset = 0;
+                this.yOffset = 0;
+            }
+
+            return new EntityMenuEntry(this.type, compound, this.tick, this.properties, this.particles, this.scale, this.xOffset, this.yOffset, this.nameplate, this.weight, this.side, this.comment);
         }
 
         public Builder setType(EntityType<?> type) {
@@ -196,6 +273,30 @@ public class EntityMenuEntry {
         public Builder setNbt(String nbt) {
 
             this.nbt = nbt;
+            return this;
+        }
+
+        public Builder setTick(boolean tick) {
+
+            this.tick = tick;
+            return this;
+        }
+
+        public Builder setOnGround(boolean onGround) {
+
+            this.properties = PropertyFlags.ON_GROUND.set(this.properties, onGround);
+            return this;
+        }
+
+        public Builder setInWater(boolean inWater) {
+
+            this.properties = PropertyFlags.IN_WATER.set(this.properties, inWater);
+            return this;
+        }
+
+        public Builder setParticles(boolean particles) {
+
+            this.particles = particles;
             return this;
         }
 
@@ -239,6 +340,30 @@ public class EntityMenuEntry {
 
             this.comment = comment;
             return this;
+        }
+
+    }
+
+    public enum PropertyFlags {
+
+        ON_GROUND,
+        IN_WATER;
+
+        private final int identifier = 1 << this.ordinal();
+
+        public int write(int data) {
+
+           return data ^ this.identifier;
+        }
+
+        public int set(int data, boolean value) {
+
+            return value != PropertyFlags.IN_WATER.read(data) ? PropertyFlags.IN_WATER.write(data) : data;
+        }
+
+        public boolean read(int data) {
+
+            return (data & this.identifier) == this.identifier;
         }
 
     }

@@ -3,10 +3,8 @@ package com.fuzs.menucompanions.client.util;
 import com.fuzs.menucompanions.MenuCompanions;
 import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
 import net.minecraft.block.BlockState;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.MobEntity;
-import net.minecraft.entity.SpawnReason;
+import net.minecraft.client.Minecraft;
+import net.minecraft.entity.*;
 import net.minecraft.entity.monster.EndermanEntity;
 import net.minecraft.entity.monster.ZombifiedPiglinEntity;
 import net.minecraft.entity.monster.piglin.PiglinEntity;
@@ -33,37 +31,37 @@ public class CreateEntityUtil {
 
     @SuppressWarnings("ConstantConditions")
     @Nullable
-    public static Entity loadEntity(EntityType<?> type, CompoundNBT compound, World worldIn) {
+    public static Entity loadEntity(EntityType<?> type, CompoundNBT compound, World worldIn, int properties) {
 
         CompoundNBT compoundnbt = compound.copy();
         compoundnbt.putString("id", Objects.requireNonNull(ForgeRegistries.ENTITIES.getKey(type)).toString());
 
-        return loadEntityAndExecute(compoundnbt, worldIn, mobEntity -> {
+        return loadEntityAndExecute(compoundnbt, worldIn, entity -> {
 
             // prevents Entity#move from running as it calls a block tag which isn't registered yet
-            mobEntity.noClip = true;
-            mobEntity.setOnGround(true);
-            ObfuscationReflectionHelper.setPrivateValue(Entity.class, mobEntity, true, "inWater");
+            entity.noClip = true;
+            entity.setOnGround(EntityMenuEntry.PropertyFlags.ON_GROUND.read(properties));
+            ObfuscationReflectionHelper.setPrivateValue(Entity.class, entity, EntityMenuEntry.PropertyFlags.IN_WATER.read(properties), "inWater");
 
-            if (mobEntity instanceof PiglinEntity) {
+            if (entity instanceof PiglinEntity) {
 
-                ((PiglinEntity) mobEntity).func_234442_u_(true);
+                ((PiglinEntity) entity).func_234442_u_(true);
             }
 
-            if (compound.isEmpty() && mobEntity instanceof MobEntity) {
+            if (compound.isEmpty() && entity instanceof MobEntity) {
 
                 try {
 
                     // set difficulty very hard so gear is more likely to appear
                     DifficultyInstance difficulty = new DifficultyInstance(Difficulty.HARD, 100000L, 100000, 1.0F);
-                    ((MobEntity) mobEntity).onInitialSpawn(null, difficulty, SpawnReason.COMMAND, null, null);
+                    ((MobEntity) entity).onInitialSpawn(null, difficulty, SpawnReason.COMMAND, null, null);
                 } catch (Exception ignored) {
 
                     // just ignore this as it's not important and doesn't fail too often
                 }
             }
 
-            return mobEntity;
+            return entity;
         });
     }
 

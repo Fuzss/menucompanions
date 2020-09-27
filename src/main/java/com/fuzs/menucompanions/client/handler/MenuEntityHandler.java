@@ -117,7 +117,7 @@ public class MenuEntityHandler {
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on y-axis from original position on left side.").defineInRange("Left Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[1] = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on x-axis from original position on right side.").defineInRange("Right X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[2] = -v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on y-axis from original position on right side.").defineInRange("Right Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[3] = v);
-        blacklistSpec = builder.comment("Blacklist for excluding entities. Entries will be added automatically when problematic entities are detected.").define("Blacklist", Lists.newArrayList("minecraft:ender_dragon", "minecraft:piglin", "minecraft:tropical_fish", "minecraft:cod", "minecraft:salmon"));
+        blacklistSpec = builder.comment("Blacklist for excluding entities. Entries will be added automatically when problematic entities are detected.").define("Blacklist", Lists.newArrayList("minecraft:ender_dragon"));
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, blacklistSpec, v -> blacklist = new EntryCollectionBuilder<>(ForgeRegistries.ENTITIES, MenuCompanions.LOGGER).buildEntrySet(v));
     }
 
@@ -139,8 +139,8 @@ public class MenuEntityHandler {
             @SuppressWarnings("ConstantConditions")
             ClientPlayNetHandler clientPlayNetHandler = new ClientPlayNetHandler(this.mc, null, null, profileIn);
             ClientWorld.ClientWorldInfo worldInfo = new ClientWorld.ClientWorldInfo(Difficulty.HARD, false, false);
-            DimensionType dimensionType = DynamicRegistries.func_239770_b_().func_230520_a_().func_243576_d(DimensionType.OVERWORLD);
-            return new ClientWorld(clientPlayNetHandler, worldInfo, World.OVERWORLD, dimensionType, 3, this.mc::getProfiler, this.mc.worldRenderer, false, 0) {
+            DimensionType dimensionType = DynamicRegistries.func_239770_b_().func_230520_a_().func_243576_d(DimensionType.THE_NETHER);
+            return new ClientWorld(clientPlayNetHandler, worldInfo, World.THE_NETHER, dimensionType, 3, this.mc::getProfiler, this.mc.worldRenderer, false, 0) {
 
                 @Override
                 public void playSound(double x, double y, double z, @Nonnull SoundEvent soundIn, @Nonnull SoundCategory category, float volume, float pitch, boolean distanceDelay) {
@@ -253,6 +253,7 @@ public class MenuEntityHandler {
                 this.safeRunForSide(key, entity, entity1 -> {
 
                     entity1.ticksExisted++;
+                    if (entity1 instanceof LivingEntity)
                     ((LivingEntity) entity1).livingTick();
                 });
                 if (entity.isBeingRidden()) {
@@ -262,6 +263,8 @@ public class MenuEntityHandler {
                         this.safeRunForSide(key, passenger, passenger1 -> {
 
                             passenger1.ticksExisted++;
+                            if (passenger1 instanceof LivingEntity)
+                                ((LivingEntity) passenger1).livingTick();
                             // some mobs like chicken shift their rider around on x and z axis depending on their facing direction
                             Objects.requireNonNull(passenger1.getRidingEntity()).updatePassenger(passenger1);
                         });
@@ -319,7 +322,9 @@ public class MenuEntityHandler {
             Entity entity = entry.create(this.getRenderWorld().get());
             if (entity != null) {
 
-                this.renderEntities.put(side, Pair.of(entity, entry.getRenderVec(entity)));
+                Vector3f vec = entry.getRenderVec(entity);
+                this.renderEntities.put(side, Pair.of(entity, vec));
+                this.setInitialAngles(entity, side, vec.getX(), vec.getY());
                 if (entry.showNameplate()) {
 
                     entity.getSelfAndPassengers().forEach(this.renderNameplates::add);
@@ -389,6 +394,31 @@ public class MenuEntityHandler {
     private int getYOffset(MenuSide side) {
 
         return this.offsets[side.getOffsetPos() * 2 + 1];
+    }
+
+    private void setInitialAngles(Entity entity, MenuSide side, float xOffset, float yOffset) {
+
+        Minecraft mc = Minecraft.getInstance();
+        int mouseX = (int) (mc.mouseHelper.getMouseX() * (double) mc.getMainWindow().getScaledWidth() / (double) mc.getMainWindow().getWidth());
+        int mouseY = (int) (mc.mouseHelper.getMouseY() * (double) mc.getMainWindow().getScaledHeight() / (double) mc.getMainWindow().getHeight());
+        mouseX += (int) (mc.getMainWindow().getScaledWidth() * (side == MenuSide.LEFT ? 1.0F : 6.0F) / 7.0F) + this.getXOffset(side) + (int) xOffset;
+        mouseY += mc.getMainWindow().getScaledHeight() / 4 + 5 * 24 + this.getYOffset(side) + (int) yOffset;
+        float rotX = (float) Math.atan(mouseX / 40.0F);
+        float rotY = (float) Math.atan(mouseY / 40.0F);
+
+        entity.rotationYaw = 180.0F + rotX * 40.0F;
+        entity.rotationPitch = -rotY * 20.0F;
+        entity.prevRotationYaw = entity.rotationYaw;
+        entity.prevRotationPitch = entity.rotationPitch;
+
+        if (entity instanceof LivingEntity) {
+
+            LivingEntity livingEntity = (LivingEntity) entity;
+            livingEntity.renderYawOffset = 180.0F + rotX * 20.0F;
+            livingEntity.rotationYawHead = entity.rotationYaw;
+            livingEntity.prevRenderYawOffset = livingEntity.renderYawOffset;
+            livingEntity.prevRotationYawHead = livingEntity.rotationYawHead;
+        }
     }
 
     public static boolean isAllowed(EntityType<?> type) {

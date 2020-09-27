@@ -46,7 +46,7 @@ public class JSONConfigUtil {
             outStream.close();
         } catch (Exception e) {
 
-            MenuCompanions.LOGGER.error("Failed to copy \"{}\" in config directory: {}", jsonName, e);
+            MenuCompanions.LOGGER.error("Failed to copy {} in config directory: {}", jsonName, e);
         }
     }
 
@@ -57,7 +57,7 @@ public class JSONConfigUtil {
             GSON.toJson(jsonelement, writer);
         } catch (Exception e) {
 
-            MenuCompanions.LOGGER.error("Failed to create \"{}\" in config directory: {}", jsonName, e);
+            MenuCompanions.LOGGER.error("Failed to create {} in config directory: {}", jsonName, e);
         }
     }
 
@@ -68,7 +68,7 @@ public class JSONConfigUtil {
             deserializer.accept(reader);
         } catch (Exception e) {
 
-            MenuCompanions.LOGGER.error("Failed to read \"{}\" in config directory: {}", jsonName, e);
+            MenuCompanions.LOGGER.error("Failed to read {} in config directory: {}", jsonName, e);
         }
     }
 
