@@ -1,6 +1,7 @@
 package com.fuzs.menucompanions.client.util;
 
 import com.fuzs.menucompanions.MenuCompanions;
+import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
@@ -8,6 +9,7 @@ import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.monster.EndermanEntity;
 import net.minecraft.entity.monster.ZombifiedPiglinEntity;
+import net.minecraft.entity.monster.piglin.PiglinEntity;
 import net.minecraft.entity.passive.WolfEntity;
 import net.minecraft.item.DyeColor;
 import net.minecraft.item.ItemStack;
@@ -19,6 +21,7 @@ import net.minecraft.util.Util;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
@@ -37,6 +40,16 @@ public class CreateEntityUtil {
 
         return loadEntityAndExecute(compoundnbt, worldIn, mobEntity -> {
 
+            // prevents Entity#move from running as it calls a block tag which isn't registered yet
+            mobEntity.noClip = true;
+            mobEntity.setOnGround(true);
+            ObfuscationReflectionHelper.setPrivateValue(Entity.class, mobEntity, true, "inWater");
+
+            if (mobEntity instanceof PiglinEntity) {
+
+                ((PiglinEntity) mobEntity).func_234442_u_(true);
+            }
+
             if (compound.isEmpty() && mobEntity instanceof MobEntity) {
 
                 try {
@@ -46,6 +59,7 @@ public class CreateEntityUtil {
                     ((MobEntity) mobEntity).onInitialSpawn(null, difficulty, SpawnReason.COMMAND, null, null);
                 } catch (Exception ignored) {
 
+                    // just ignore this as it's not important and doesn't fail too often
                 }
             }
 
@@ -54,24 +68,24 @@ public class CreateEntityUtil {
     }
 
     @Nullable
-    public static Entity loadEntityAndExecute(CompoundNBT compound, World worldIn, Function<Entity, Entity> p_220335_2_) {
+    public static Entity loadEntityAndExecute(CompoundNBT compound, World worldIn, Function<Entity, Entity> exec) {
 
-        return loadEntity(compound, worldIn).map(p_220335_2_).map((p_220346_3_) -> {
+        return loadEntity(compound, worldIn).map(exec).map(entity -> {
 
             if (compound.contains("Passengers", 9)) {
 
                 ListNBT listnbt = compound.getList("Passengers", 10);
                 for(int i = 0; i < listnbt.size(); ++i) {
 
-                    Entity entity = loadEntityAndExecute(listnbt.getCompound(i), worldIn, p_220335_2_);
-                    if (entity != null) {
+                    Entity passenger = loadEntityAndExecute(listnbt.getCompound(i), worldIn, exec);
+                    if (passenger != null) {
 
-                        entity.startRiding(p_220346_3_, true);
+                        passenger.startRiding(entity, true);
                     }
                 }
             }
 
-            return p_220346_3_;
+            return entity;
         }).orElse(null);
     }
 
@@ -83,13 +97,16 @@ public class CreateEntityUtil {
         } catch (RuntimeException runtimeexception) {
 
             MenuCompanions.LOGGER.warn("Exception loading entity: ", runtimeexception);
+            MenuEntityHandler.addToBlacklist(compound.getString("id"));
             return Optional.empty();
         }
     }
 
     public static Optional<Entity> loadEntityUnchecked(CompoundNBT compound, World worldIn) {
 
-        return Util.acceptOrElse(EntityType.readEntityType(compound).map(entityType -> entityType.create(worldIn)), entity -> {
+        return Util.acceptOrElse(EntityType.readEntityType(compound)
+                .map(entityType -> MenuEntityHandler.isAllowed(entityType) ? entityType : null)
+                .map(entityType -> entityType.create(worldIn)), entity -> {
 
             try {
 
@@ -99,7 +116,12 @@ public class CreateEntityUtil {
                 // world is casted to ServerWorld in IAngerable, so we need to handle those mobs manually
                 readAngerableAdditional(entity, compound);
             }
-        }, () -> MenuCompanions.LOGGER.warn("Skipping Entity with id {}", compound.getString("id")));
+        }, () -> {
+
+            String id = compound.getString("id");
+            MenuCompanions.LOGGER.warn("Skipping Entity with id {}", id);
+            MenuEntityHandler.addToBlacklist(id);
+        });
     }
 
     @SuppressWarnings("deprecation")
