@@ -7,7 +7,6 @@ import net.minecraft.entity.EntityClassification;
 import net.minecraft.entity.EntityType;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.util.JSONUtils;
-import net.minecraft.util.math.vector.Vector3f;
 import net.minecraft.world.World;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -24,28 +23,26 @@ public class EntityMenuEntry {
     @Nullable
     private final EntityType<?> type;
     private final CompoundNBT compound;
-    private final boolean tick;
     private final int properties;
-    private final boolean particles;
     private final float scale;
     private final int xOffset;
     private final int yOffset;
     private final boolean nameplate;
+    private final boolean particles;
     private final int weight;
     private final MenuSide side;
     private final String comment;
 
-    private EntityMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, boolean tick, int properties, boolean particles, float scale, int xOffset, int yOffset, boolean nameplate, int weight, MenuSide side, String comment) {
+    private EntityMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, int properties, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuSide side, String comment) {
 
         this.type = type;
         this.compound = compound;
-        this.tick = tick;
         this.properties = properties;
-        this.particles = particles;
         this.scale = scale;
         this.xOffset = xOffset;
         this.yOffset = yOffset;
         this.nameplate = nameplate;
+        this.particles = particles;
         this.weight = weight;
         this.side = side;
         this.comment = comment;
@@ -56,12 +53,7 @@ public class EntityMenuEntry {
         return this.type != null;
     }
 
-    public Vector3f getRenderVec(Entity entity) {
-
-        return new Vector3f((this.side == MenuSide.RIGHT ? -1 : 1) * this.xOffset, this.yOffset, this.getScale(entity));
-    }
-
-    private float getScale(Entity entity) {
+    public float getScale(Entity entity) {
 
         if (this.isTypeSet()) {
 
@@ -74,7 +66,7 @@ public class EntityMenuEntry {
     private static float getScale(float width, float height) {
 
         final float minWidth = 1.0F / 2.0F;
-        final float maxWidth = 2.0F / 1.0F;
+        final float maxWidth = 3.0F / 1.0F;
         final float midWidth = (minWidth + maxWidth) / 2.0F;
         final float minHeight = 1.0F / 3.0F;
         final float maxHeight = 4.0F / 3.0F;
@@ -106,9 +98,24 @@ public class EntityMenuEntry {
         return 1.0F;
     }
 
+    public int getXOffset() {
+
+        return this.xOffset;
+    }
+
+    public int getYOffset() {
+
+        return this.yOffset;
+    }
+
     public boolean showNameplate() {
 
         return this.nameplate;
+    }
+
+    public boolean showParticles() {
+
+        return this.particles;
     }
 
     public int getWeight() {
@@ -119,6 +126,11 @@ public class EntityMenuEntry {
     public boolean isSide(MenuSide side) {
 
         return this.side == MenuSide.BOTH || this.side == side;
+    }
+
+    public boolean isTick() {
+
+        return PropertyFlags.TICK.read(this.properties);
     }
 
     @Nullable
@@ -185,7 +197,7 @@ public class EntityMenuEntry {
 
         if (!this.isTypeSet() || this.type.getClassification() != EntityClassification.MISC) {
 
-            jsonobject.addProperty("tick", this.tick);
+            jsonobject.addProperty("tick", PropertyFlags.TICK.read(this.properties));
         }
 
         jsonobject.addProperty("onGround", PropertyFlags.ON_GROUND.read(this.properties));
@@ -209,7 +221,7 @@ public class EntityMenuEntry {
             builder.setWeight(JSONUtils.getInt(jsonobject, "weight"));
             builder.setNameplate(JSONUtils.getBoolean(displayobject, "nameplate"));
             builder.setParticles(JSONUtils.getBoolean(displayobject, "particles"));
-            builder.setSide(IEntrySerializer.deserializeEnum(displayobject, "side", MenuSide.class, null));
+            builder.setSide(IEntrySerializer.deserializeEnum(displayobject, "side", MenuSide.class, MenuSide.BOTH));
             builder.setOnGround(JSONUtils.getBoolean(propertiesobject, "onGround"));
             builder.setInWater(JSONUtils.getBoolean(propertiesobject, "inWater"));
             if (id != null) {
@@ -236,13 +248,12 @@ public class EntityMenuEntry {
 
         private EntityType<?> type = null;
         private String nbt = "";
-        private boolean tick = true;
-        private int properties = PropertyFlags.ON_GROUND.write(PropertyFlags.IN_WATER.write(0));
-        private boolean particles = true;
+        private int properties = 7;
         private float scale = 1.0F;
         private int xOffset = 0;
         private int yOffset = 0;
         private boolean nameplate = false;
+        private boolean particles = true;
         private int weight = 1;
         private MenuSide side = MenuSide.BOTH;
         private String comment = "";
@@ -261,7 +272,7 @@ public class EntityMenuEntry {
                 this.yOffset = 0;
             }
 
-            return new EntityMenuEntry(this.type, compound, this.tick, this.properties, this.particles, this.scale, this.xOffset, this.yOffset, this.nameplate, this.weight, this.side, this.comment);
+            return new EntityMenuEntry(this.type, compound, this.properties, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.side, this.comment);
         }
 
         public Builder setType(EntityType<?> type) {
@@ -278,19 +289,19 @@ public class EntityMenuEntry {
 
         public Builder setTick(boolean tick) {
 
-            this.tick = tick;
+            this.properties = PropertyFlags.TICK.write(this.properties, tick);
             return this;
         }
 
         public Builder setOnGround(boolean onGround) {
 
-            this.properties = PropertyFlags.ON_GROUND.set(this.properties, onGround);
+            this.properties = PropertyFlags.ON_GROUND.write(this.properties, onGround);
             return this;
         }
 
         public Builder setInWater(boolean inWater) {
 
-            this.properties = PropertyFlags.IN_WATER.set(this.properties, inWater);
+            this.properties = PropertyFlags.IN_WATER.write(this.properties, inWater);
             return this;
         }
 
@@ -330,9 +341,21 @@ public class EntityMenuEntry {
             return this;
         }
 
-        public Builder setSide(MenuSide side) {
+        private Builder setSide(MenuSide side) {
 
             this.side = side;
+            return this;
+        }
+
+        public Builder setLeft() {
+
+            this.side = MenuSide.LEFT;
+            return this;
+        }
+
+        public Builder setRight() {
+
+            this.side = MenuSide.RIGHT;
             return this;
         }
 
@@ -346,19 +369,16 @@ public class EntityMenuEntry {
 
     public enum PropertyFlags {
 
+        TICK,
         ON_GROUND,
         IN_WATER;
 
         private final int identifier = 1 << this.ordinal();
 
-        public int write(int data) {
+        public int write(int data, boolean value) {
 
-           return data ^ this.identifier;
-        }
-
-        public int set(int data, boolean value) {
-
-            return value != PropertyFlags.IN_WATER.read(data) ? PropertyFlags.IN_WATER.write(data) : data;
+            data &= ~this.identifier;
+            return value ? data | this.identifier : data;
         }
 
         public boolean read(int data) {

@@ -3,8 +3,10 @@ package com.fuzs.menucompanions.client.util;
 import com.fuzs.menucompanions.MenuCompanions;
 import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
 import net.minecraft.block.BlockState;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.*;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.MobEntity;
+import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.monster.EndermanEntity;
 import net.minecraft.entity.monster.ZombifiedPiglinEntity;
 import net.minecraft.entity.monster.piglin.PiglinEntity;
@@ -38,11 +40,14 @@ public class CreateEntityUtil {
 
         return loadEntityAndExecute(compoundnbt, worldIn, entity -> {
 
+            // prevents crash in sprite renderers
+            entity.ticksExisted = 2;
             // prevents Entity#move from running as it calls a block tag which isn't registered yet
             entity.noClip = true;
             entity.setOnGround(EntityMenuEntry.PropertyFlags.ON_GROUND.read(properties));
             ObfuscationReflectionHelper.setPrivateValue(Entity.class, entity, EntityMenuEntry.PropertyFlags.IN_WATER.read(properties), "inWater");
 
+            // piglins do otherwise use an item tag not registered yet
             if (entity instanceof PiglinEntity) {
 
                 ((PiglinEntity) entity).func_234442_u_(true);

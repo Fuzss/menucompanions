@@ -65,6 +65,7 @@ public class MenuCompanions {
     private void onLoadComplete(final FMLLoadCompleteEvent evt) {
 
         ConfigManager.sync();
+        this.handler.createSides();
     }
 
 }

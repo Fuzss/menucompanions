@@ -2,18 +2,11 @@ package com.fuzs.menucompanions.client.util;
 
 public enum MenuSide {
 
-    BOTH(-1), LEFT(0), RIGHT(1);
+    LEFT, RIGHT, BOTH;
 
-    private final int offsetPos;
+    public MenuSide inverse() {
 
-    MenuSide(int pos) {
-
-        this.offsetPos = pos;
-    }
-
-    public int getOffsetPos() {
-
-        return this.offsetPos;
+        return MenuSide.values()[(this.ordinal() + 1) % 2];
     }
 
 }
