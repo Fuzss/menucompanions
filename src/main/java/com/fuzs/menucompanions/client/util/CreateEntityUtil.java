@@ -2,11 +2,9 @@ package com.fuzs.menucompanions.client.util;
 
 import com.fuzs.menucompanions.MenuCompanions;
 import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
+import com.fuzs.menucompanions.mixin.EntityAccessorMixin;
 import net.minecraft.block.BlockState;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.MobEntity;
-import net.minecraft.entity.SpawnReason;
+import net.minecraft.entity.*;
 import net.minecraft.entity.monster.EndermanEntity;
 import net.minecraft.entity.monster.ZombifiedPiglinEntity;
 import net.minecraft.entity.monster.piglin.PiglinEntity;
@@ -20,8 +18,8 @@ import net.minecraft.util.NonNullList;
 import net.minecraft.util.Util;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.IServerWorld;
 import net.minecraft.world.World;
-import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
@@ -31,7 +29,6 @@ import java.util.function.Function;
 
 public class CreateEntityUtil {
 
-    @SuppressWarnings("ConstantConditions")
     @Nullable
     public static Entity loadEntity(EntityType<?> type, CompoundNBT compound, World worldIn, int properties) {
 
@@ -40,32 +37,9 @@ public class CreateEntityUtil {
 
         return loadEntityAndExecute(compoundnbt, worldIn, entity -> {
 
-            // prevents crash in sprite renderers
-            entity.ticksExisted = 2;
-            // prevents Entity#move from running as it calls a block tag which isn't registered yet
-            entity.noClip = true;
-            entity.setOnGround(EntityMenuEntry.PropertyFlags.ON_GROUND.read(properties));
-            ObfuscationReflectionHelper.setPrivateValue(Entity.class, entity, EntityMenuEntry.PropertyFlags.IN_WATER.read(properties), "inWater");
-
-            // piglins do otherwise use an item tag not registered yet
-            if (entity instanceof PiglinEntity) {
-
-                ((PiglinEntity) entity).func_234442_u_(true);
-            }
-
-            if (compound.isEmpty() && entity instanceof MobEntity) {
-
-                try {
-
-                    // set difficulty very hard so gear is more likely to appear
-                    DifficultyInstance difficulty = new DifficultyInstance(Difficulty.HARD, 100000L, 100000, 1.0F);
-                    ((MobEntity) entity).onInitialSpawn(null, difficulty, SpawnReason.COMMAND, null, null);
-                } catch (Exception ignored) {
-
-                    // just ignore this as it's not important and doesn't fail too often
-                }
-            }
-
+            boolean onGround = EntityMenuEntry.PropertyFlags.ON_GROUND.read(properties);
+            boolean inWater = EntityMenuEntry.PropertyFlags.IN_WATER.read(properties);
+            onInitialSpawn(entity, (IServerWorld) worldIn, compound.isEmpty(), onGround, inWater);
             return entity;
         });
     }
@@ -125,6 +99,39 @@ public class CreateEntityUtil {
             MenuCompanions.LOGGER.warn("Skipping Entity with id {}", id);
             MenuEntityHandler.addToBlacklist(id);
         });
+    }
+
+    private static void onInitialSpawn(Entity entity, IServerWorld worldIn, boolean noNbt, boolean onGround, boolean inWater) {
+
+        // prevents crash in sprite renderers
+        entity.ticksExisted = 2;
+        // prevents Entity#move from running as it calls a block tag which isn't registered yet
+        entity.noClip = true;
+        entity.setOnGround(onGround);
+        ((EntityAccessorMixin) entity).setInWater(inWater);
+
+        // piglins do otherwise use an item tag not registered yet
+        if (entity instanceof PiglinEntity) {
+
+            ((PiglinEntity) entity).func_234442_u_(true);
+        }
+
+        if (noNbt && entity instanceof MobEntity) {
+
+            try {
+
+                // set difficulty very hard so gear is more likely to appear
+                DifficultyInstance difficulty = new DifficultyInstance(Difficulty.HARD, 100000L, 100000, 1.0F);
+                ((MobEntity) entity).onInitialSpawn(worldIn, difficulty, SpawnReason.COMMAND, null, null);
+                if (entity instanceof AgeableEntity && ((AgeableEntity) entity).getRNG().nextFloat() <= 0.05F) {
+
+                    ((AgeableEntity) entity).setChild(true);
+                }
+            } catch (Exception ignored) {
+
+                // just ignore this as it's not important and doesn't fail too often
+            }
+        }
     }
 
     @SuppressWarnings("deprecation")

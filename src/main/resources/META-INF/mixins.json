@@ -7,7 +7,8 @@
   "mixins": [
   ],
   "client": [
-    "ParticleManagerAccessorMixin"
+    "ParticleManagerAccessorMixin",
+    "EntityAccessorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

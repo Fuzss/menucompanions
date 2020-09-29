@@ -107,11 +107,12 @@ public class MenuEntityHandler {
             ClientPlayNetHandler clientPlayNetHandler = new ClientPlayNetHandler(this.mc, null, null, profileIn);
             ClientWorld.ClientWorldInfo worldInfo = new ClientWorld.ClientWorldInfo(Difficulty.HARD, false, false);
             DimensionType dimensionType = DynamicRegistries.func_239770_b_().func_230520_a_().func_243576_d(DimensionType.THE_NETHER);
-            this.renderWorld = new MenuClientWorld(clientPlayNetHandler, worldInfo, World.THE_NETHER, dimensionType, 3, this.mc::getProfiler, this.mc.worldRenderer, false, 0);
+            this.renderWorld = new MenuClientWorld(clientPlayNetHandler, worldInfo, World.THE_NETHER, dimensionType, this.mc::getProfiler, this.mc.worldRenderer);
         } catch (Exception e) {
 
             MenuCompanions.LOGGER.error("Unable to create rendering world: {}", e.getMessage());
             this.unload();
+            return;
         }
 
         this.sides[0] = new EntityMenuContainer(this.mc, this.renderWorld);

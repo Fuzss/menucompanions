@@ -7,18 +7,22 @@ import com.fuzs.menucompanions.client.world.MenuClientWorld;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.ActiveRenderInfo;
 import net.minecraft.client.renderer.IRenderTypeBuffer;
 import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.math.vector.Vector3f;
+import net.minecraft.util.text.ITextComponent;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 @SuppressWarnings("deprecation")
@@ -45,7 +49,7 @@ public class EntityMenuContainer {
 
         this.mc = mc;
         this.world = world;
-        this.particleManager = new MenuParticleManager(mc ,world);
+        this.particleManager = new MenuParticleManager(mc, world);
     }
 
     public void createEntity(@Nonnull Entity entity, @Nonnull EntityMenuEntry entry, MenuSide side) {
@@ -83,7 +87,7 @@ public class EntityMenuContainer {
 
             if (entity.isPassenger()) {
 
-                entity.getRidingEntity().updatePassenger(entity);
+                Objects.requireNonNull(entity.getRidingEntity()).updatePassenger(entity);
             }
         }
     }
@@ -121,7 +125,17 @@ public class EntityMenuContainer {
                 setRotationAngles(entity, mouseX, mouseY + (float) posVec.getY() * scale);
             }
 
-            this.safeRun(entity, renderEntity -> drawEntityOnScreen(matrixstack, posVec.getX(), posVec.getY(), posVec.getZ(), renderEntity, partialTicks));
+            this.safeRun(entity, renderEntity -> drawEntityOnScreen(matrixstack, posVec.getX(), posVec.getY(), posVec.getZ(), partialTicks, renderEntity, (irendertypebuffer, packedLightIn) -> {
+
+                if (this.nameplate) {
+
+                    matrixstack.push();
+                    float downscale = 1.0F / this.scale;
+                    matrixstack.scale(downscale, downscale, downscale);
+                    renderName(matrixstack, irendertypebuffer, packedLightIn, entity, (entity.getHeight() + 0.5F) * this.scale);
+                    matrixstack.pop();
+                }
+            }));
         }
 
         this.firstRender = false;
@@ -134,7 +148,9 @@ public class EntityMenuContainer {
 
             try {
 
+                matrixstack.push();
                 this.particleManager.renderParticles(matrixstack, this.mc.gameRenderer.getLightTexture(), this.mc.gameRenderer.getActiveRenderInfo(), partialTicks);
+                matrixstack.pop();
             } catch (Exception e) {
 
                 MenuCompanions.LOGGER.warn("Exception rendering particle, skipping until reload");
@@ -171,19 +187,6 @@ public class EntityMenuContainer {
         return this.enabled && this.entity != null;
     }
 
-    private static void drawEntityOnScreen(MatrixStack matrixstack, double posX, double posY, double posZ, Entity entity, float partialTicks) {
-
-        matrixstack.translate(posX, posY, posZ);
-        EntityRendererManager entityrenderermanager = Minecraft.getInstance().getRenderManager();
-        entityrenderermanager.setRenderShadow(false);
-        IRenderTypeBuffer.Impl irendertypebuffer$impl = Minecraft.getInstance().getRenderTypeBuffers().getBufferSource();
-        RenderSystem.runAsFancy(() -> entityrenderermanager.renderEntityStatic(entity, 0.0D, 0.0D, 0.0D, 0.0F, partialTicks, matrixstack, irendertypebuffer$impl, 15728880));
-
-        irendertypebuffer$impl.finish();
-        entityrenderermanager.setRenderShadow(true);
-        matrixstack.translate(-posX, -posY, -posZ);
-    }
-
     private static void setRotationAngles(Entity entity, float mouseX, float mouseY) {
 
         entity.prevRotationYaw = entity.rotationYaw;
@@ -198,6 +201,44 @@ public class EntityMenuContainer {
             livingEntity.renderYawOffset = 180.0F + (float) Math.atan(mouseX / 40.0F) * 20.0F;
             livingEntity.rotationYawHead = entity.rotationYaw;
         }
+    }
+
+    private static void drawEntityOnScreen(MatrixStack matrixstack, double posX, double posY, double posZ, float partialTicks, Entity entity, BiConsumer<IRenderTypeBuffer, Integer> renderName) {
+
+        matrixstack.push();
+        matrixstack.translate(posX, posY, posZ);
+        EntityRendererManager entityrenderermanager = Minecraft.getInstance().getRenderManager();
+        entityrenderermanager.setRenderShadow(false);
+        IRenderTypeBuffer.Impl irendertypebuffer = Minecraft.getInstance().getRenderTypeBuffers().getBufferSource();
+        RenderSystem.runAsFancy(() -> {
+
+            entityrenderermanager.renderEntityStatic(entity, 0.0, 0.0, 0.0, 0.0F, partialTicks, matrixstack, irendertypebuffer, 15728880);
+            renderName.accept(irendertypebuffer, 15728880);
+        });
+
+        irendertypebuffer.finish();
+        entityrenderermanager.setRenderShadow(true);
+        matrixstack.pop();
+    }
+
+    private static void renderName(MatrixStack matrixStackIn, IRenderTypeBuffer bufferIn, int packedLightIn, Entity entityIn, float renderHeight) {
+
+        ITextComponent displayNameIn = entityIn.getDisplayName();
+        float renderOffset = "deadmau5".equals(displayNameIn.getString()) ? -10 : 0;
+
+        matrixStackIn.push();
+        matrixStackIn.translate(0.0D, renderHeight, 0.0D);
+        matrixStackIn.scale(-0.025F, -0.025F, 0.025F);
+        Matrix4f matrix4f = matrixStackIn.getLast().getMatrix();
+
+        float backgroundOpacity = Minecraft.getInstance().gameSettings.getTextBackgroundOpacity(0.25F);
+        int alpha = (int) (backgroundOpacity * 255.0F) << 24;
+        FontRenderer fontrenderer = Minecraft.getInstance().fontRenderer;
+        int textWidth = -fontrenderer.func_238414_a_(displayNameIn) / 2;
+        fontrenderer.func_243247_a(displayNameIn, textWidth, renderOffset, 553648127, false, matrix4f, bufferIn, true, alpha, packedLightIn);
+        fontrenderer.func_243247_a(displayNameIn, textWidth, renderOffset, -1, false, matrix4f, bufferIn, false, 0, packedLightIn);
+
+        matrixStackIn.pop();
     }
 
 }

@@ -16,22 +16,24 @@ import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.world.DimensionType;
+import net.minecraft.world.IServerWorld;
 import net.minecraft.world.World;
+import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class MenuClientWorld extends ClientWorld {
+public class MenuClientWorld extends ClientWorld implements IServerWorld {
 
     private final Minecraft mc = Minecraft.getInstance();
 
     private EntityMenuContainer activeContainer;
 
-    public MenuClientWorld(ClientPlayNetHandler p_i242067_1_, ClientWorldInfo p_i242067_2_, RegistryKey<World> p_i242067_3_, DimensionType p_i242067_4_, int p_i242067_5_, Supplier<IProfiler> p_i242067_6_, WorldRenderer p_i242067_7_, boolean p_i242067_8_, long p_i242067_9_) {
+    public MenuClientWorld(ClientPlayNetHandler connection, ClientWorldInfo worldInfo, RegistryKey<World> dimension, DimensionType dimensionType, Supplier<IProfiler> profiler, WorldRenderer worldRenderer) {
 
-        super(p_i242067_1_, p_i242067_2_, p_i242067_3_, p_i242067_4_, p_i242067_5_, p_i242067_6_, p_i242067_7_, p_i242067_8_, p_i242067_9_);
+        super(connection, worldInfo, dimension, dimensionType, 0, profiler, worldRenderer, false, 0L);
     }
 
     @Override
@@ -106,6 +108,13 @@ public class MenuClientWorld extends ClientWorld {
         }
 
         return particlestatus;
+    }
+
+    @SuppressWarnings("NullableProblems")
+    @Override
+    public ServerWorld getWorld() {
+
+        return null;
     }
 
     public void setActiveContainer(EntityMenuContainer container) {
