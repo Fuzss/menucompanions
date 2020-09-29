@@ -12,8 +12,10 @@ import com.google.common.collect.Lists;
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.audio.SoundHandler;
 import net.minecraft.client.gui.screen.MainMenuScreen;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.button.Button;
 import net.minecraft.client.gui.widget.button.ImageButton;
 import net.minecraft.client.network.play.ClientPlayNetHandler;
 import net.minecraft.client.world.ClientWorld;
@@ -21,6 +23,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.registry.DynamicRegistries;
+import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.DimensionType;
@@ -51,11 +54,13 @@ public class MenuEntityHandler {
     private ReloadMode reloadMode;
     private MenuSide menuSide;
     private final int[] offsets = new int[4];
+    private boolean playSounds;
     private static Set<EntityType<?>> blacklist;
     private static ForgeConfigSpec.ConfigValue<List<String>> blacklistSpec;
 
     private MenuClientWorld renderWorld;
     private final EntityMenuContainer[] sides = new EntityMenuContainer[2];
+    private final int size = 60;
 
     public void setup(ForgeConfigSpec.Builder builder) {
 
@@ -89,6 +94,14 @@ public class MenuEntityHandler {
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on y-axis from original position on left side.").defineInRange("Left Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[1] = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on x-axis from original position on right side.").defineInRange("Right X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[2] = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on y-axis from original position on right side.").defineInRange("Right Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[3] = v);
+        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Play ambient sounds when clicking on menu mobs.").define("Play Sounds", true), v -> this.playSounds = v);
+        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Volume of ambient sounds.").defineInRange("Sound Volume", 0.5, 0.0, 1.0), v -> {
+
+            if (this.renderWorld != null) {
+
+                this.renderWorld.setSoundVolume(v.floatValue());
+            }
+        });
         blacklistSpec = builder.comment("Blacklist for excluding entities. Entries will be added automatically when problematic entities are detected.").define("Blacklist", Lists.newArrayList("minecraft:ender_dragon", "minecraft:minecart", "minecraft:furnace_minecart", "minecraft:chest_minecart", "minecraft:spawner_minecart", "minecraft:hopper_minecart", "minecraft:command_block_minecart", "minecraft:tnt_minecart", "minecraft:evoker_fangs", "minecraft:falling_block", "minecraft:area_effect_cloud", "minecraft:item", "minecraft:fishing_bobber"));
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, blacklistSpec, v -> blacklist = new EntryCollectionBuilder<>(ForgeRegistries.ENTITIES, MenuCompanions.LOGGER).buildEntrySet(v));
     }
@@ -127,7 +140,7 @@ public class MenuEntityHandler {
 
         if (evt.getGui() instanceof MainMenuScreen) {
 
-            evt.addWidget(new ImageButton(evt.getGui().width / 2 + 104 + 24, evt.getGui().height / 4 + 48 + 72 + 12, 20, 20, 0, 0, 20, RELOAD_TEXTURES, 32, 64, (p_213088_1_) -> {
+            evt.addWidget(new ImageButton(evt.getGui().width / 2 + 104 + 24, evt.getGui().height / 4 + 48 + 72 + 12, 20, 20, 0, 0, 20, RELOAD_TEXTURES, 32, 64, button -> {
 
                 JSONConfigUtil.load(MenuCompanions.JSON_CONFIG_NAME, MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
                 MenuCompanions.LOGGER.info("Reloaded config file at {}", MenuCompanions.JSON_CONFIG_NAME);
@@ -141,6 +154,40 @@ public class MenuEntityHandler {
 
                     this.visible = MenuEntityHandler.this.reloadMode == ReloadMode.CONTROL && Screen.hasControlDown() || MenuEntityHandler.this.reloadMode == ReloadMode.ALWAYS;
                     super.render(matrixStack, mouseX, mouseY, partialTicks);
+                }
+
+            });
+
+            evt.addWidget(new Button(0,  0, this.size, 3 * 24 + 8, StringTextComponent.EMPTY, button -> this.sides[0].playAmbientSound()) {
+
+                @Override
+                public void render(@Nonnull MatrixStack matrixStack, int mouseX, int mouseY, float partialTicks) {
+
+                    this.active = MenuEntityHandler.this.playSounds;
+                    this.x = (evt.getGui().width / 2 - 96) / 2 - MenuEntityHandler.this.size / 2 + MenuEntityHandler.this.offsets[0];
+                    this.y = evt.getGui().height / 4 + 48 - MenuEntityHandler.this.offsets[1];
+                }
+
+                @Override
+                public void playDownSound(@Nonnull SoundHandler handler) {
+
+                }
+
+            });
+
+            evt.addWidget(new Button(0,  0, this.size, 3 * 24 + 8, StringTextComponent.EMPTY, button -> this.sides[1].playAmbientSound()) {
+
+                @Override
+                public void render(@Nonnull MatrixStack matrixStack, int mouseX, int mouseY, float partialTicks) {
+
+                    this.active = MenuEntityHandler.this.playSounds;
+                    this.x = evt.getGui().width - ((evt.getGui().width / 2 - 96) / 2 + MenuEntityHandler.this.offsets[2] + MenuEntityHandler.this.size / 2);
+                    this.y = evt.getGui().height / 4 + 48 - MenuEntityHandler.this.offsets[3];
+                }
+
+                @Override
+                public void playDownSound(@Nonnull SoundHandler handler) {
+
                 }
 
             });
@@ -163,13 +210,10 @@ public class MenuEntityHandler {
             for (int i = 0; i < this.sides.length; i++) {
 
                 EntityMenuContainer container = this.sides[i];
-                if (container.isEnabled()) {
-
-                    int xOffset = (evt.getGui().width / 2 - 96) / 2 + this.offsets[i * 2];
-                    int posX = i == 0 ? xOffset : evt.getGui().width - xOffset;
-                    int posY = evt.getGui().height / 4 + 116 - this.offsets[i * 2 + 1];
-                    container.render(posX, posY, 30, -evt.getMouseX(), -evt.getMouseY(), evt.getRenderPartialTicks());
-                }
+                int xOffset = (evt.getGui().width / 2 - 96) / 2 + this.offsets[i * 2];
+                int posX = i == 0 ? xOffset : evt.getGui().width - xOffset;
+                int posY = evt.getGui().height / 4 + 116 - this.offsets[i * 2 + 1];
+                container.render(posX, posY, this.size / 2.0F, -evt.getMouseX(), -evt.getMouseY(), evt.getRenderPartialTicks());
             }
 
             this.runCleanup();
@@ -180,7 +224,7 @@ public class MenuEntityHandler {
 
         if (evt.phase != TickEvent.Phase.END && this.mc.currentScreen instanceof MainMenuScreen) {
 
-            Stream.of(this.sides).filter(EntityMenuContainer::isEnabled).forEach(EntityMenuContainer::tick);
+            Stream.of(this.sides).forEach(EntityMenuContainer::tick);
             this.runCleanup();
         }
     }

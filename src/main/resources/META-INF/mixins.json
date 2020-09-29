@@ -8,7 +8,9 @@
   ],
   "client": [
     "ParticleManagerAccessorMixin",
-    "EntityAccessorMixin"
+    "EntityAccessorMixin",
+    "MobEntityAccessorMixin",
+    "LivingEntityAccessorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

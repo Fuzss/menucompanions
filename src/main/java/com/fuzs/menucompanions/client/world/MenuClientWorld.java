@@ -30,6 +30,7 @@ public class MenuClientWorld extends ClientWorld implements IServerWorld {
     private final Minecraft mc = Minecraft.getInstance();
 
     private EntityMenuContainer activeContainer;
+    private float volume;
 
     public MenuClientWorld(ClientPlayNetHandler connection, ClientWorldInfo worldInfo, RegistryKey<World> dimension, DimensionType dimensionType, Supplier<IProfiler> profiler, WorldRenderer worldRenderer) {
 
@@ -40,6 +41,16 @@ public class MenuClientWorld extends ClientWorld implements IServerWorld {
     public void playSound(double x, double y, double z, @Nonnull SoundEvent soundIn, @Nonnull SoundCategory category, float volume, float pitch, boolean distanceDelay) {
 
         // prevent mob sounds from playing for ender dragon and blaze
+    }
+
+    public void playMenuSound(double x, double y, double z, SoundEvent soundIn, SoundCategory category, float volume, float pitch) {
+
+        super.playSound(x, y, z, soundIn, category, volume * this.volume, pitch, false);
+    }
+
+    public void setSoundVolume(float volume) {
+
+        this.volume = volume;
     }
 
     public void addParticle(@Nonnull IParticleData particleData, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {

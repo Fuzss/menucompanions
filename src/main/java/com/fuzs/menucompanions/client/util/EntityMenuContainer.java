@@ -4,6 +4,8 @@ import com.fuzs.menucompanions.MenuCompanions;
 import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
 import com.fuzs.menucompanions.client.particle.MenuParticleManager;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
+import com.fuzs.menucompanions.mixin.LivingEntityAccessorMixin;
+import com.fuzs.menucompanions.mixin.MobEntityAccessorMixin;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
@@ -13,6 +15,8 @@ import net.minecraft.client.renderer.IRenderTypeBuffer;
 import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.MobEntity;
+import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.math.vector.Vector3d;
@@ -20,8 +24,12 @@ import net.minecraft.util.math.vector.Vector3f;
 import net.minecraft.util.text.ITextComponent;
 
 import javax.annotation.Nonnull;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @SuppressWarnings("deprecation")
 public class EntityMenuContainer {
@@ -69,6 +77,11 @@ public class EntityMenuContainer {
 
     public void tick() {
 
+        if (!this.enabled || this.entity == null) {
+
+            return;
+        }
+
         this.world.setActiveContainer(this);
         if (this.particles) {
 
@@ -91,6 +104,11 @@ public class EntityMenuContainer {
     }
 
     public void render(int posX, int posY, float scale, float mouseX, float mouseY, float partialTicks) {
+
+        if (!this.enabled || this.entity == null) {
+
+            return;
+        }
 
         ActiveRenderInfo activerenderinfo = this.mc.gameRenderer.getActiveRenderInfo();
         // allows fire to be rendered on mobs as it requires an active render info object
@@ -160,6 +178,21 @@ public class EntityMenuContainer {
         }
     }
 
+    public void playAmbientSound() {
+
+        List<Entity> entities = Stream.of(this.selfAndPassengers).filter(entity -> entity instanceof MobEntity).collect(Collectors.toList());
+        Collections.shuffle(entities);
+        MobEntity mob = ((MobEntity) entities.get((int) (entities.size() * Math.random())));
+
+        SoundEvent soundevent = ((MobEntityAccessorMixin) mob).callGetAmbientSound();
+        mob.playAmbientSound();
+        if (soundevent != null && !mob.isSilent()) {
+
+            this.world.playMenuSound(mob.getPosX(), mob.getPosY(), mob.getPosZ(), soundevent, mob.getSoundCategory(),
+                    ((LivingEntityAccessorMixin) mob).callGetSoundVolume(), ((LivingEntityAccessorMixin) mob).callGetSoundPitch());
+        }
+    }
+
     public boolean isInvalid() {
 
         return !this.valid;
@@ -168,11 +201,6 @@ public class EntityMenuContainer {
     public void setEnabled(boolean enabled) {
 
         this.enabled = enabled;
-    }
-
-    public boolean isEnabled() {
-
-        return this.enabled && this.entity != null;
     }
 
     private static void setRotationAngles(Entity entity, float mouseX, float mouseY) {
