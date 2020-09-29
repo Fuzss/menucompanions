@@ -77,11 +77,6 @@ public class MenuEntityHandler {
         this.events.forEach(MinecraftForge.EVENT_BUS::addListener);
     }
 
-    private void unload() {
-
-        this.events.forEach(MinecraftForge.EVENT_BUS::unregister);
-    }
-
     private void setupConfig(ForgeConfigSpec.Builder builder) {
 
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("When to show reload button on main menu. By default requires the control key to be pressed.").defineEnum("Reload Button", ReloadMode.CONTROL), v -> this.reloadMode = v);
@@ -92,7 +87,7 @@ public class MenuEntityHandler {
         });
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on x-axis from original position on left side.").defineInRange("Left X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[0] = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on y-axis from original position on left side.").defineInRange("Left Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[1] = v);
-        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on x-axis from original position on right side.").defineInRange("Right X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[2] = -v);
+        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on x-axis from original position on right side.").defineInRange("Right X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[2] = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on y-axis from original position on right side.").defineInRange("Right Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[3] = v);
         blacklistSpec = builder.comment("Blacklist for excluding entities. Entries will be added automatically when problematic entities are detected.").define("Blacklist", Lists.newArrayList("minecraft:ender_dragon", "minecraft:minecart", "minecraft:furnace_minecart", "minecraft:chest_minecart", "minecraft:spawner_minecart", "minecraft:hopper_minecart", "minecraft:command_block_minecart", "minecraft:tnt_minecart", "minecraft:evoker_fangs", "minecraft:falling_block", "minecraft:area_effect_cloud", "minecraft:item", "minecraft:fishing_bobber"));
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, blacklistSpec, v -> blacklist = new EntryCollectionBuilder<>(ForgeRegistries.ENTITIES, MenuCompanions.LOGGER).buildEntrySet(v));
@@ -111,7 +106,8 @@ public class MenuEntityHandler {
         } catch (Exception e) {
 
             MenuCompanions.LOGGER.error("Unable to create rendering world: {}", e.getMessage());
-            this.unload();
+            this.events.forEach(MinecraftForge.EVENT_BUS::unregister);
+
             return;
         }
 
@@ -169,9 +165,10 @@ public class MenuEntityHandler {
                 EntityMenuContainer container = this.sides[i];
                 if (container.isEnabled()) {
 
-                    int posX = (int) (evt.getGui().width * (i == 0 ? 1.0F : 6.0F) / 7.0F) + this.offsets[i * 2];
-                    int posY = evt.getGui().height / 4 + 5 * 24 + this.offsets[i * 2 + 1];
-                    container.render(posX, posY, 30, -evt.getMouseX() + posX, -evt.getMouseY() + posY, evt.getRenderPartialTicks());
+                    int xOffset = (evt.getGui().width / 2 - 96) / 2 + this.offsets[i * 2];
+                    int posX = i == 0 ? xOffset : evt.getGui().width - xOffset;
+                    int posY = evt.getGui().height / 4 + 116 - this.offsets[i * 2 + 1];
+                    container.render(posX, posY, 30, -evt.getMouseX(), -evt.getMouseY(), evt.getRenderPartialTicks());
                 }
             }
 
@@ -234,6 +231,22 @@ public class MenuEntityHandler {
         }
     }
 
+    public static boolean runOrElse(Entity entity, Consumer<Entity> action, Consumer<Entity> orElse) {
+
+        try {
+
+            action.accept(entity);
+        } catch (Exception e) {
+
+            MenuCompanions.LOGGER.error("Unable to handle Entity {}", entity.getDisplayName().getString(), e);
+            orElse.accept(entity);
+
+            return false;
+        }
+
+        return true;
+    }
+
     public static boolean isAllowed(EntityType<?> type) {
 
         return blacklist == null || !blacklist.contains(type);
@@ -242,16 +255,26 @@ public class MenuEntityHandler {
     public static void addToBlacklist(String type) {
 
         ResourceLocation key = ResourceLocation.tryCreate(type);
-        if (blacklistSpec == null || key == null || !ForgeRegistries.ENTITIES.containsKey(key)) {
+        if (key == null || !ForgeRegistries.ENTITIES.containsKey(key)) {
 
             return;
         }
 
-        if (isAllowed(ForgeRegistries.ENTITIES.getValue(key))) {
+        addToBlacklist(Objects.requireNonNull(ForgeRegistries.ENTITIES.getValue(key)));
+    }
 
-            List<String> newBlacklist = Stream.of(blacklistSpec.get(), Collections.singleton(key.toString()))
-                    .flatMap(Collection::stream).collect(Collectors.toList());
-            blacklistSpec.set(newBlacklist);
+    public static void addToBlacklist(EntityType<?> type) {
+
+        if (blacklistSpec == null) {
+
+            return;
+        }
+
+        if (isAllowed(type)) {
+
+            blacklistSpec.set(Stream.of(blacklistSpec.get(),
+                    Collections.singleton(Objects.requireNonNull(ForgeRegistries.ENTITIES.getKey(type)).toString()))
+                    .flatMap(Collection::stream).collect(Collectors.toList()));
         }
     }
 

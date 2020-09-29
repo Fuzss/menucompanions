@@ -18,12 +18,10 @@ import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.math.vector.Vector3f;
 import net.minecraft.util.text.ITextComponent;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 @SuppressWarnings("deprecation")
 public class EntityMenuContainer {
@@ -82,7 +80,7 @@ public class EntityMenuContainer {
             entity.ticksExisted++;
             if (this.tick && entity instanceof LivingEntity) {
 
-                this.safeRun(entity, safeEntity -> ((LivingEntity) safeEntity).livingTick());
+                this.tick = MenuEntityHandler.runOrElse(entity, safeEntity -> ((LivingEntity) safeEntity).livingTick(), safeEntity -> {});
             }
 
             if (entity.isPassenger()) {
@@ -101,11 +99,14 @@ public class EntityMenuContainer {
         scale *= this.scale;
         posX += this.xOffset;
         posY += this.yOffset;
+        posY -= Math.max(0.0F, 0.9F - this.entity.getHeight() / 2.0F) * 30;
+        mouseX += posX;
+        mouseY += posY;
         mouseY -= this.entity.getEyeHeight() / 1.62F * 50.0F * this.scale;
 
         RenderSystem.pushMatrix();
-        RenderSystem.scalef(1.0F, 1.0F, -1.0F);
         RenderSystem.translatef((float) posX, (float) posY, 50.0F);
+        RenderSystem.scalef(1.0F, 1.0F, -1.0F);
 
         MatrixStack matrixstack = new MatrixStack();
         matrixstack.scale(scale, scale, scale);
@@ -125,7 +126,7 @@ public class EntityMenuContainer {
                 setRotationAngles(entity, mouseX, mouseY + (float) posVec.getY() * scale);
             }
 
-            this.safeRun(entity, renderEntity -> drawEntityOnScreen(matrixstack, posVec.getX(), posVec.getY(), posVec.getZ(), partialTicks, renderEntity, (irendertypebuffer, packedLightIn) -> {
+            this.valid = MenuEntityHandler.runOrElse(entity, renderEntity -> drawEntityOnScreen(matrixstack, posVec.getX(), posVec.getY(), posVec.getZ(), partialTicks, renderEntity, (irendertypebuffer, packedLightIn) -> {
 
                 if (this.nameplate) {
 
@@ -135,7 +136,7 @@ public class EntityMenuContainer {
                     renderName(matrixstack, irendertypebuffer, packedLightIn, entity, (entity.getHeight() + 0.5F) * this.scale);
                     matrixstack.pop();
                 }
-            }));
+            }), renderEntity -> MenuEntityHandler.addToBlacklist(renderEntity.getType()));
         }
 
         this.firstRender = false;
@@ -156,19 +157,6 @@ public class EntityMenuContainer {
                 MenuCompanions.LOGGER.warn("Exception rendering particle, skipping until reload");
                 this.particles = false;
             }
-        }
-    }
-
-    private void safeRun(Entity entity, Consumer<Entity> action) {
-
-        try {
-
-            action.accept(entity);
-        } catch (Exception e) {
-
-            MenuCompanions.LOGGER.error("Unable to handle Entity {}", entity.getDisplayName().getString(), e);
-            MenuEntityHandler.addToBlacklist(Objects.requireNonNull(ForgeRegistries.ENTITIES.getKey(entity.getType())).toString());
-            this.valid = false;
         }
     }
 

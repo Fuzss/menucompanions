@@ -377,6 +377,7 @@ public class EntityMenuEntry {
 
         public int write(int data, boolean value) {
 
+            // delete byte before writing
             data &= ~this.identifier;
             return value ? data | this.identifier : data;
         }

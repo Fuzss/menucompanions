@@ -58,6 +58,7 @@ public class CreateEntityUtil {
                     if (passenger != null) {
 
                         passenger.startRiding(entity, true);
+                        entity.updatePassenger(passenger);
                     }
                 }
             }
