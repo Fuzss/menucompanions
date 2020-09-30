@@ -24,7 +24,6 @@ public class MenuEntryBuilder {
     private boolean particles = true;
     private int weight = 1;
     private MenuEntityHandler.MenuSide side = MenuEntityHandler.MenuSide.BOTH;
-    private String comment = "";
     private String profile = "";
     private byte modelParts = 127;
     private boolean crouching = false;
@@ -45,10 +44,10 @@ public class MenuEntryBuilder {
 
         if (this.type == EntityType.PLAYER) {
 
-            return new PlayerMenuEntry(this.type, compound, this.data, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.side, this.comment, this.profile, this.modelParts, this.crouching);
+            return new PlayerMenuEntry(this.type, compound, this.data, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.side, this.profile, this.modelParts, this.crouching);
         }
 
-        return new EntityMenuEntry(this.type, compound, this.data, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.side, this.comment);
+        return new EntityMenuEntry(this.type, compound, this.data, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.side);
     }
 
     public MenuEntryBuilder setType(EntityType<?> type) {
@@ -135,12 +134,6 @@ public class MenuEntryBuilder {
         return this;
     }
 
-    public MenuEntryBuilder setComment(String comment) {
-
-        this.comment = comment;
-        return this;
-    }
-
     private MenuEntryBuilder setCrouching(boolean crouching) {
 
         this.crouching = crouching;
@@ -181,7 +174,7 @@ public class MenuEntryBuilder {
             builder.setNameplate(JSONUtils.getBoolean(displayobject, "nameplate"));
             builder.setParticles(JSONUtils.getBoolean(displayobject, "particles"));
             builder.setSide(IEntrySerializer.deserializeEnum(displayobject, "side", MenuEntityHandler.MenuSide.class, MenuEntityHandler.MenuSide.BOTH));
-            builder.setModelParts(IEntrySerializer.deserializeEnumProperties(dataobject, EntityMenuEntry.PropertyFlags.class, EntityMenuEntry.PropertyFlags::toString, EntityMenuEntry.PropertyFlags::getPropertyMask));
+            builder.setData(IEntrySerializer.deserializeEnumProperties(dataobject, EntityMenuEntry.PropertyFlags.class, EntityMenuEntry.PropertyFlags::toString, EntityMenuEntry.PropertyFlags::getPropertyMask));
             if (id != null) {
 
                 builder.setScale(JSONUtils.getFloat(displayobject, "scale"));

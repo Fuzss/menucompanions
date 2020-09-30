@@ -86,7 +86,7 @@ public class MenuEntityHandler {
 
     private void setupConfig(ForgeConfigSpec.Builder builder) {
 
-        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("When to show reload button on main menu. By default requires the control key to be pressed.").defineEnum("Reload Button", ReloadMode.CONTROL), v -> this.reloadMode = v);
+        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("When to show reload button on main menu. By default requires the control key to be pressed.").defineEnum("Reload Button", ReloadMode.RIGHT_CONTROL), v -> this.reloadMode = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Which side entities can be shown at.").defineEnum("Entity Side", MenuSide.BOTH), v -> {
 
             this.menuSide = v;
@@ -137,7 +137,7 @@ public class MenuEntityHandler {
 
         if (evt.getGui() instanceof MainMenuScreen) {
 
-            evt.addWidget(new ImageButton(evt.getGui().width / 2 + 104 + 24, evt.getGui().height / 4 + 48 + 72 + 12, 20, 20, 0, 0, 20, RELOAD_TEXTURES, 32, 64, button -> {
+            evt.addWidget(new ImageButton(0, 0, 20, 20, 0, 0, 20, RELOAD_TEXTURES, 32, 64, button -> {
 
                 JSONConfigUtil.load(MenuCompanions.JSON_CONFIG_NAME, MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
                 MenuCompanions.LOGGER.info("Reloaded config file at {}", MenuCompanions.JSON_CONFIG_NAME);
@@ -149,7 +149,9 @@ public class MenuEntityHandler {
                 @Override
                 public void render(@Nonnull MatrixStack matrixStack, int mouseX, int mouseY, float partialTicks) {
 
-                    this.visible = MenuEntityHandler.this.reloadMode == ReloadMode.CONTROL && Screen.hasControlDown() || MenuEntityHandler.this.reloadMode == ReloadMode.ALWAYS;
+                    this.visible = MenuEntityHandler.this.reloadMode.requiresControl() && Screen.hasControlDown() || MenuEntityHandler.this.reloadMode.isAlways();
+                    this.x = evt.getGui().width / 2 + (MenuEntityHandler.this.reloadMode.isLeft() ? -(100 + 24 * 2) : 104 + 24);
+                    this.y = evt.getGui().height / 4 + 48 + 72 + 12;
                     super.render(matrixStack, mouseX, mouseY, partialTicks);
                 }
 
@@ -335,7 +337,29 @@ public class MenuEntityHandler {
     @SuppressWarnings("unused")
     private enum ReloadMode {
 
-        NEVER, CONTROL, ALWAYS
+        NEVER(0), RIGHT_CONTROL(2), RIGHT_ALWAYS(4), LEFT_CONTROL(3), LEFT_ALWAYS(5);
+
+        private final int data;
+
+        ReloadMode(int data) {
+
+            this.data = data;
+        }
+
+        public boolean isLeft() {
+
+            return (this.data & 1) == 1;
+        }
+
+        public boolean requiresControl() {
+
+            return (this.data & 2) == 2;
+        }
+
+        public boolean isAlways() {
+
+            return (this.data & 4) == 4;
+        }
     }
 
 }

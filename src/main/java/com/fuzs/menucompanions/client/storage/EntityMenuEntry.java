@@ -37,9 +37,8 @@ public class EntityMenuEntry {
     private final boolean particles;
     private final int weight;
     private final MenuEntityHandler.MenuSide side;
-    private final String comment;
 
-    public EntityMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityHandler.MenuSide side, String comment) {
+    public EntityMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityHandler.MenuSide side) {
 
         this.type = type;
         this.compound = compound;
@@ -51,7 +50,6 @@ public class EntityMenuEntry {
         this.particles = particles;
         this.weight = weight;
         this.side = side;
-        this.comment = comment;
     }
 
     private boolean isTypeSet() {
@@ -139,6 +137,11 @@ public class EntityMenuEntry {
         return this.readProperty(PropertyFlags.TICK);
     }
 
+    public boolean isWalking() {
+
+        return this.readProperty(PropertyFlags.WALKING);
+    }
+
     @Nullable
     public Entity create(MenuClientWorld worldIn) {
 
@@ -175,11 +178,6 @@ public class EntityMenuEntry {
     public JsonElement serialize() {
 
         JsonObject jsonobject = new JsonObject();
-        if (!this.comment.isEmpty()) {
-
-            jsonobject.addProperty("__comment", this.comment);
-        }
-
         IEntrySerializer.serializeEntityType(jsonobject, this.type);
         jsonobject.addProperty("weight", this.weight);
         jsonobject.add(DISPLAY_NAME, this.serializeDisplay());
@@ -228,7 +226,8 @@ public class EntityMenuEntry {
         TICK("tick"),
         ON_GROUND("on_ground"),
         IN_WATER("in_water"),
-        AGGRESSIVE("aggressive");
+        AGGRESSIVE("aggressive"),
+        WALKING("walking");
 
         private final int identifier = 1 << this.ordinal();
         private final String name;

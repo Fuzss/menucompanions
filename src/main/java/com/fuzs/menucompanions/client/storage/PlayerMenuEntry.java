@@ -33,9 +33,9 @@ public class PlayerMenuEntry extends EntityMenuEntry {
     private final byte modelParts;
     private final boolean crouching;
 
-    public PlayerMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityHandler.MenuSide side, String comment, String profile, byte modelParts, boolean crouching) {
+    public PlayerMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityHandler.MenuSide side, String profile, byte modelParts, boolean crouching) {
 
-        super(type, compound, data, scale, xOffset, yOffset, nameplate, particles, weight, side, comment);
+        super(type, compound, data, scale, xOffset, yOffset, nameplate, particles, weight, side);
         this.profile = profile;
         this.modelParts = modelParts;
         this.crouching = crouching;

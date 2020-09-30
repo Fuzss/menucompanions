@@ -5,7 +5,6 @@ import com.fuzs.menucompanions.config.JSONConfigUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import net.minecraft.entity.EntityType;
 
 import javax.annotation.Nullable;
@@ -16,7 +15,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 public class MenuEntityProvider {
 
@@ -82,27 +80,15 @@ public class MenuEntityProvider {
 
     public static void serialize(String jsonName, File jsonFile) {
 
-        JsonObject jsonobject = new JsonObject();
-        JsonArray commentarray = new JsonArray();
-        commentarray.add("Here is a guide on how to do stuff");
-        commentarray.add("Here is more on how to do stuff");
-        jsonobject.add("__comment", commentarray);
-        JsonArray dataarray = new JsonArray();
-        DEFAULT_MENU_ENTRIES.forEach(entry -> dataarray.add(entry.serialize()));
-
-        JsonArray mainarray = new JsonArray();
-        mainarray.add(jsonobject);
-        mainarray.add(dataarray);
-        JSONConfigUtil.saveToFile(jsonName, jsonFile, mainarray);
+        JsonArray jsonarray = new JsonArray();
+        DEFAULT_MENU_ENTRIES.forEach(entry -> jsonarray.add(entry.serialize()));
+        JSONConfigUtil.saveToFile(jsonName, jsonFile, jsonarray);
     }
 
     public static void deserialize(FileReader reader) {
 
         MENU_ENTRIES.clear();
-
         Stream.of(JSONConfigUtil.GSON.fromJson(reader, JsonElement[].class))
-                .filter(element -> element instanceof JsonArray)
-                .flatMap(arr -> StreamSupport.stream(((JsonArray) arr).spliterator(), false))
                 .forEach(element -> Optional.ofNullable(MenuEntryBuilder.deserialize(element)).ifPresent(MENU_ENTRIES::add));
     }
 

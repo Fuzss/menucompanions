@@ -21,11 +21,11 @@ import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.MobEntity;
-import net.minecraft.entity.passive.IFlyingAnimal;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.particles.ParticleTypes;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.SoundEvent;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.math.vector.Vector3d;
@@ -54,6 +54,7 @@ public class EntityMenuContainer {
     private Entity entity;
     private Entity[] selfAndPassengers;
     private boolean tick;
+    private boolean walking;
     private float scale;
     private int xOffset;
     private int yOffset;
@@ -72,6 +73,7 @@ public class EntityMenuContainer {
         this.entity = entity;
         this.selfAndPassengers = entity.getSelfAndPassengers().toArray(Entity[]::new);
         this.tick = entry.isTick();
+        this.walking = entry.isWalking();
         this.scale = entry.getScale(entity);
         this.xOffset = (side == MenuEntityHandler.MenuSide.RIGHT ? -1 : 1) * entry.getXOffset();
         this.yOffset = -entry.getYOffset();
@@ -102,14 +104,17 @@ public class EntityMenuContainer {
             entity.ticksExisted++;
             if (entity instanceof LivingEntity) {
 
+                LivingEntity livingEntity = (LivingEntity) entity;
                 if (entity instanceof PlayerEntity) {
 
-                    LivingEntity livingEntity = (LivingEntity) entity;
-                    livingEntity.func_233629_a_(livingEntity, livingEntity instanceof IFlyingAnimal);
+                    this.updateLimbSwing(livingEntity, this.walking ? 0.6F : 0.0F);
                     if (livingEntity.hurtTime > 0) {
 
                         --livingEntity.hurtTime;
                     }
+                } else if (this.walking) {
+
+                    this.updateLimbSwing(livingEntity, 0.6F);
                 }
 
                 if (this.tick) {
@@ -123,6 +128,13 @@ public class EntityMenuContainer {
                 Objects.requireNonNull(entity.getRidingEntity()).updatePassenger(entity);
             }
         }
+    }
+
+    private void updateLimbSwing(LivingEntity livingEntity, float amount) {
+
+        livingEntity.prevLimbSwingAmount = livingEntity.limbSwingAmount;
+        livingEntity.limbSwingAmount += (MathHelper.clamp(amount, 0.0F, 1.0F) - livingEntity.limbSwingAmount) * 0.4F;
+        livingEntity.limbSwing += livingEntity.limbSwingAmount;
     }
 
     public void render(int posX, int posY, float scale, float mouseX, float mouseY, float partialTicks) {
@@ -220,10 +232,7 @@ public class EntityMenuContainer {
         if (livingEntity instanceof MobEntity) {
 
             SoundEvent ambientSound = ((MobEntityAccessorMixin) livingEntity).callGetAmbientSound();
-            if (this.playLivingSound(handler, livingEntity, ambientSound, volume)) {
-
-                return;
-            }
+            this.playLivingSound(handler, livingEntity, ambientSound, volume);
         }
 
         if (hurtPlayer && livingEntity instanceof PlayerEntity && livingEntity.hurtTime == 0) {
@@ -245,7 +254,7 @@ public class EntityMenuContainer {
         }
     }
 
-    private boolean playLivingSound(SoundHandler handler, LivingEntity livingEntity, SoundEvent soundEvent, float volume) {
+    private void playLivingSound(SoundHandler handler, LivingEntity livingEntity, SoundEvent soundEvent, float volume) {
 
         if (soundEvent != null && !livingEntity.isSilent()) {
 
@@ -253,11 +262,7 @@ public class EntityMenuContainer {
             float soundPitch = ((LivingEntityAccessorMixin) livingEntity).callGetSoundPitch();
             handler.play(new SimpleSound(soundEvent.getName(), livingEntity.getSoundCategory(), soundVolume, soundPitch, false, 0,
                     ISound.AttenuationType.NONE, livingEntity.getPosX(), livingEntity.getPosY(), livingEntity.getPosZ(), true));
-
-            return true;
         }
-
-        return false;
     }
 
     public boolean isInvalid() {
