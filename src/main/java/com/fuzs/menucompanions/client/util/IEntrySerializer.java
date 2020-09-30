@@ -12,7 +12,6 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -48,23 +47,12 @@ public interface IEntrySerializer {
     }
 
     @Nullable
-    static EntityType<?> deserializeEntityType(JsonObject jsonobject) {
+    static EntityType<?> readEntityType(String id) {
 
-        if (jsonobject.has("id")) {
+        ResourceLocation resourceKey = ResourceLocation.tryCreate(id);
+        if (resourceKey != null && ForgeRegistries.ENTITIES.containsKey(resourceKey)) {
 
-            String id = JSONUtils.getString(jsonobject, "id");
-            if (id.toLowerCase(Locale.ROOT).equals(RANDOM)) {
-
-                return null;
-            }
-
-            ResourceLocation resourceKey = ResourceLocation.tryCreate(id);
-            if (resourceKey != null && ForgeRegistries.ENTITIES.containsKey(resourceKey)) {
-
-                return ForgeRegistries.ENTITIES.getValue(resourceKey);
-            }
-
-            MenuCompanions.LOGGER.warn("Failed to read entity type id {}, assigning random entity type instead", id);
+            return ForgeRegistries.ENTITIES.getValue(resourceKey);
         }
 
         return null;
