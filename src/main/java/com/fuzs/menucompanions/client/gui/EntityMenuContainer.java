@@ -1,14 +1,19 @@
-package com.fuzs.menucompanions.client.util;
+package com.fuzs.menucompanions.client.gui;
 
 import com.fuzs.menucompanions.MenuCompanions;
 import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
 import com.fuzs.menucompanions.client.particle.MenuParticleManager;
+import com.fuzs.menucompanions.client.storage.EntityMenuEntry;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
+import com.fuzs.menucompanions.mixin.ActiveRenderInfoAccessorMixin;
 import com.fuzs.menucompanions.mixin.LivingEntityAccessorMixin;
 import com.fuzs.menucompanions.mixin.MobEntityAccessorMixin;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.audio.ISound;
+import net.minecraft.client.audio.SimpleSound;
+import net.minecraft.client.audio.SoundHandler;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.ActiveRenderInfo;
 import net.minecraft.client.renderer.IRenderTypeBuffer;
@@ -16,6 +21,10 @@ import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.MobEntity;
+import net.minecraft.entity.passive.IFlyingAnimal;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.particles.ParticleTypes;
+import net.minecraft.util.DamageSource;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
@@ -58,13 +67,13 @@ public class EntityMenuContainer {
         this.particleManager = new MenuParticleManager(mc, world);
     }
 
-    public void createEntity(@Nonnull Entity entity, @Nonnull EntityMenuEntry entry, MenuSide side) {
+    public void createEntity(@Nonnull Entity entity, @Nonnull EntityMenuEntry entry, MenuEntityHandler.MenuSide side) {
 
         this.entity = entity;
         this.selfAndPassengers = entity.getSelfAndPassengers().toArray(Entity[]::new);
         this.tick = entry.isTick();
         this.scale = entry.getScale(entity);
-        this.xOffset = (side == MenuSide.RIGHT ? -1 : 1) * entry.getXOffset();
+        this.xOffset = (side == MenuEntityHandler.MenuSide.RIGHT ? -1 : 1) * entry.getXOffset();
         this.yOffset = -entry.getYOffset();
         this.nameplate = entry.showNameplate();
         this.particles = entry.showParticles();
@@ -91,9 +100,22 @@ public class EntityMenuContainer {
         for (Entity entity : this.selfAndPassengers) {
 
             entity.ticksExisted++;
-            if (this.tick && entity instanceof LivingEntity) {
+            if (entity instanceof LivingEntity) {
 
-                this.tick = MenuEntityHandler.runOrElse(entity, safeEntity -> ((LivingEntity) safeEntity).livingTick(), safeEntity -> {});
+                if (entity instanceof PlayerEntity) {
+
+                    LivingEntity livingEntity = (LivingEntity) entity;
+                    livingEntity.func_233629_a_(livingEntity, livingEntity instanceof IFlyingAnimal);
+                    if (livingEntity.hurtTime > 0) {
+
+                        --livingEntity.hurtTime;
+                    }
+                }
+
+                if (this.tick) {
+
+                    this.tick = MenuEntityHandler.runOrElse(entity, safeEntity -> ((LivingEntity) safeEntity).livingTick(), safeEntity -> {});
+                }
             }
 
             if (entity.isPassenger()) {
@@ -113,6 +135,8 @@ public class EntityMenuContainer {
         ActiveRenderInfo activerenderinfo = this.mc.gameRenderer.getActiveRenderInfo();
         // allows fire to be rendered on mobs as it requires an active render info object
         this.mc.getRenderManager().cacheActiveRenderInfo(this.world, activerenderinfo, this.entity);
+        ((ActiveRenderInfoAccessorMixin) activerenderinfo).callSetPosition(Vector3d.ZERO);
+        ((ActiveRenderInfoAccessorMixin) activerenderinfo).callSetDirection(0.0F, 0.0F);
 
         scale *= this.scale;
         posX += this.xOffset;
@@ -178,19 +202,62 @@ public class EntityMenuContainer {
         }
     }
 
-    public void playAmbientSound() {
+    public void playLivingSound(SoundHandler handler, float volume, boolean hurtPlayer) {
 
-        List<Entity> entities = Stream.of(this.selfAndPassengers).filter(entity -> entity instanceof MobEntity).collect(Collectors.toList());
-        Collections.shuffle(entities);
-        MobEntity mob = ((MobEntity) entities.get((int) (entities.size() * Math.random())));
+        if (!this.enabled || this.entity == null) {
 
-        SoundEvent soundevent = ((MobEntityAccessorMixin) mob).callGetAmbientSound();
-        mob.playAmbientSound();
-        if (soundevent != null && !mob.isSilent()) {
-
-            this.world.playMenuSound(mob.getPosX(), mob.getPosY(), mob.getPosZ(), soundevent, mob.getSoundCategory(),
-                    ((LivingEntityAccessorMixin) mob).callGetSoundVolume(), ((LivingEntityAccessorMixin) mob).callGetSoundPitch());
+            return;
         }
+
+        List<Entity> entities = Stream.of(this.selfAndPassengers).filter(entity -> entity instanceof LivingEntity).collect(Collectors.toList());
+        if (entities.isEmpty()) {
+
+            return;
+        }
+
+        Collections.shuffle(entities);
+        LivingEntity livingEntity = ((LivingEntity) entities.get((int) (entities.size() * Math.random())));
+        if (livingEntity instanceof MobEntity) {
+
+            SoundEvent ambientSound = ((MobEntityAccessorMixin) livingEntity).callGetAmbientSound();
+            if (this.playLivingSound(handler, livingEntity, ambientSound, volume)) {
+
+                return;
+            }
+        }
+
+        if (hurtPlayer && livingEntity instanceof PlayerEntity && livingEntity.hurtTime == 0) {
+
+            livingEntity.hurtTime = 10;
+            livingEntity.limbSwingAmount = 1.5F;
+            for(int i = 0; i < 2; i++) {
+
+                double posX = livingEntity.getPosX() + this.world.rand.nextGaussian() * 0.2;
+                double posY = livingEntity.getPosYHeight(0.5);
+                double posZ = livingEntity.getPosZ() - 0.3 + this.world.rand.nextGaussian() * 0.2;
+                double xSpeed = this.world.rand.nextGaussian() * 0.02;
+                double zSpeed = this.world.rand.nextGaussian() * 0.02;
+                this.world.addParticle(ParticleTypes.DAMAGE_INDICATOR, posX, posY, posZ, xSpeed, 0.0, zSpeed);
+            }
+
+            SoundEvent hurtSound = ((LivingEntityAccessorMixin) livingEntity).callGetHurtSound(DamageSource.GENERIC);
+            this.playLivingSound(handler, livingEntity, hurtSound, volume);
+        }
+    }
+
+    private boolean playLivingSound(SoundHandler handler, LivingEntity livingEntity, SoundEvent soundEvent, float volume) {
+
+        if (soundEvent != null && !livingEntity.isSilent()) {
+
+            float soundVolume = ((LivingEntityAccessorMixin) livingEntity).callGetSoundVolume() * volume;
+            float soundPitch = ((LivingEntityAccessorMixin) livingEntity).callGetSoundPitch();
+            handler.play(new SimpleSound(soundEvent.getName(), livingEntity.getSoundCategory(), soundVolume, soundPitch, false, 0,
+                    ISound.AttenuationType.NONE, livingEntity.getPosX(), livingEntity.getPosY(), livingEntity.getPosZ(), true));
+
+            return true;
+        }
+
+        return false;
     }
 
     public boolean isInvalid() {
@@ -243,7 +310,7 @@ public class EntityMenuContainer {
         float renderOffset = "deadmau5".equals(displayNameIn.getString()) ? -10 : 0;
 
         matrixStackIn.push();
-        matrixStackIn.translate(0.0D, renderHeight, 0.0D);
+        matrixStackIn.translate(0.0, renderHeight, 0.0);
         matrixStackIn.scale(-0.025F, -0.025F, 0.025F);
         Matrix4f matrix4f = matrixStackIn.getLast().getMatrix();
 

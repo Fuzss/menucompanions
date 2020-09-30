@@ -7,10 +7,13 @@
   "mixins": [
   ],
   "client": [
+    "PiglinModelMixin",
     "ParticleManagerAccessorMixin",
     "EntityAccessorMixin",
     "MobEntityAccessorMixin",
-    "LivingEntityAccessorMixin"
+    "LivingEntityAccessorMixin",
+    "PlayerEntityAccessorMixin",
+    "ActiveRenderInfoAccessorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

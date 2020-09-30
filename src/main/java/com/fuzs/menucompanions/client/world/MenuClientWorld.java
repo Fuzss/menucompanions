@@ -1,6 +1,6 @@
 package com.fuzs.menucompanions.client.world;
 
-import com.fuzs.menucompanions.client.util.EntityMenuContainer;
+import com.fuzs.menucompanions.client.gui.EntityMenuContainer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.network.play.ClientPlayNetHandler;
 import net.minecraft.client.renderer.WorldRenderer;
@@ -14,7 +14,6 @@ import net.minecraft.profiler.IProfiler;
 import net.minecraft.util.RegistryKey;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.world.DimensionType;
 import net.minecraft.world.IServerWorld;
 import net.minecraft.world.World;
@@ -27,10 +26,7 @@ import java.util.function.Supplier;
 
 public class MenuClientWorld extends ClientWorld implements IServerWorld {
 
-    private final Minecraft mc = Minecraft.getInstance();
-
     private EntityMenuContainer activeContainer;
-    private float volume;
 
     public MenuClientWorld(ClientPlayNetHandler connection, ClientWorldInfo worldInfo, RegistryKey<World> dimension, DimensionType dimensionType, Supplier<IProfiler> profiler, WorldRenderer worldRenderer) {
 
@@ -40,17 +36,7 @@ public class MenuClientWorld extends ClientWorld implements IServerWorld {
     @Override
     public void playSound(double x, double y, double z, @Nonnull SoundEvent soundIn, @Nonnull SoundCategory category, float volume, float pitch, boolean distanceDelay) {
 
-        // prevent mob sounds from playing for ender dragon and blaze
-    }
-
-    public void playMenuSound(double x, double y, double z, SoundEvent soundIn, SoundCategory category, float volume, float pitch) {
-
-        super.playSound(x, y, z, soundIn, category, volume * this.volume, pitch, false);
-    }
-
-    public void setSoundVolume(float volume) {
-
-        this.volume = volume;
+        // prevent mob sounds from playing, mainly for ender dragon and blaze
     }
 
     public void addParticle(@Nonnull IParticleData particleData, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {
@@ -92,22 +78,15 @@ public class MenuClientWorld extends ClientWorld implements IServerWorld {
     private void addParticleUnchecked(IParticleData particleData, boolean alwaysRender, boolean minimizeLevel, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {
 
         ParticleStatus particlestatus = this.calculateParticleLevel(minimizeLevel);
-        if (alwaysRender) {
+        if (alwaysRender || particlestatus != ParticleStatus.MINIMAL) {
 
             this.activeContainer.particleManager.addParticle(particleData, x, y, z, xSpeed, ySpeed, zSpeed);
-        } else if (Vector3d.ZERO.squareDistanceTo(x, y, z) <= 1024.0D) {
-
-            // distance to zero will do as everything happens almost at the origin in this world
-            if (particlestatus != ParticleStatus.MINIMAL) {
-
-                this.activeContainer.particleManager.addParticle(particleData, x, y, z, xSpeed, ySpeed, zSpeed);
-            }
         }
     }
 
     private ParticleStatus calculateParticleLevel(boolean minimiseLevel) {
 
-        ParticleStatus particlestatus = this.mc.gameSettings.particles;
+        ParticleStatus particlestatus = Minecraft.getInstance().gameSettings.particles;
         if (minimiseLevel && particlestatus == ParticleStatus.MINIMAL && this.rand.nextInt(10) == 0) {
 
             particlestatus = ParticleStatus.DECREASED;

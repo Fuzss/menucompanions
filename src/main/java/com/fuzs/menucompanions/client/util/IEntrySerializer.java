@@ -14,6 +14,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import javax.annotation.Nullable;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.function.Function;
 
 public interface IEntrySerializer {
 
@@ -88,6 +89,29 @@ public interface IEntrySerializer {
         }
 
         return defaultValue;
+    }
+
+    static <T extends Enum<T>> void serializeEnumProperties(JsonObject jsonobject, Class<T> clazz, byte data, Function<T, String> key, Function<T, Integer> value) {
+
+        for (T constant : clazz.getEnumConstants()) {
+
+            jsonobject.addProperty(key.apply(constant), (data & value.apply(constant)) == value.apply(constant));
+        }
+
+    }
+
+    static <T extends Enum<T>> byte deserializeEnumProperties(JsonObject jsonobject, Class<T> clazz, Function<T, String> key, Function<T, Integer> value) {
+
+        byte data = 0;
+        for (T constant : clazz.getEnumConstants()) {
+
+            if (JSONUtils.getBoolean(jsonobject, key.apply(constant))) {
+
+                data |= value.apply(constant);
+            }
+        }
+
+        return data;
     }
 
 }

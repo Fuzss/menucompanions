@@ -1,7 +1,7 @@
 package com.fuzs.menucompanions;
 
 import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
-import com.fuzs.menucompanions.client.handler.MenuEntityProvider;
+import com.fuzs.menucompanions.client.storage.MenuEntityProvider;
 import com.fuzs.menucompanions.config.ConfigManager;
 import com.fuzs.menucompanions.config.JSONConfigUtil;
 import net.minecraftforge.api.distmarker.Dist;

@@ -1,9 +1,9 @@
 package com.fuzs.menucompanions.client.handler;
 
 import com.fuzs.menucompanions.MenuCompanions;
-import com.fuzs.menucompanions.client.util.EntityMenuContainer;
-import com.fuzs.menucompanions.client.util.EntityMenuEntry;
-import com.fuzs.menucompanions.client.util.MenuSide;
+import com.fuzs.menucompanions.client.gui.EntityMenuContainer;
+import com.fuzs.menucompanions.client.storage.EntityMenuEntry;
+import com.fuzs.menucompanions.client.storage.MenuEntityProvider;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
 import com.fuzs.menucompanions.config.ConfigManager;
 import com.fuzs.menucompanions.config.EntryCollectionBuilder;
@@ -55,6 +55,8 @@ public class MenuEntityHandler {
     private MenuSide menuSide;
     private final int[] offsets = new int[4];
     private boolean playSounds;
+    private double volume;
+    private boolean hurtPlayer;
     private static Set<EntityType<?>> blacklist;
     private static ForgeConfigSpec.ConfigValue<List<String>> blacklistSpec;
 
@@ -95,13 +97,8 @@ public class MenuEntityHandler {
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on x-axis from original position on right side.").defineInRange("Right X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[2] = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on y-axis from original position on right side.").defineInRange("Right Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[3] = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Play ambient sounds when clicking on menu mobs.").define("Play Sounds", true), v -> this.playSounds = v);
-        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Volume of ambient sounds.").defineInRange("Sound Volume", 0.5, 0.0, 1.0), v -> {
-
-            if (this.renderWorld != null) {
-
-                this.renderWorld.setSoundVolume(v.floatValue());
-            }
-        });
+        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Volume of ambient sounds.").defineInRange("Sound Volume", 0.5, 0.0, 1.0), v -> this.volume = v);
+        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Hurt player when clicked.").define("Hurt Player", true), v -> this.hurtPlayer = v);
         blacklistSpec = builder.comment("Blacklist for excluding entities. Entries will be added automatically when problematic entities are detected.").define("Blacklist", Lists.newArrayList("minecraft:ender_dragon", "minecraft:minecart", "minecraft:furnace_minecart", "minecraft:chest_minecart", "minecraft:spawner_minecart", "minecraft:hopper_minecart", "minecraft:command_block_minecart", "minecraft:tnt_minecart", "minecraft:evoker_fangs", "minecraft:falling_block", "minecraft:area_effect_cloud", "minecraft:item", "minecraft:fishing_bobber"));
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, blacklistSpec, v -> blacklist = new EntryCollectionBuilder<>(ForgeRegistries.ENTITIES, MenuCompanions.LOGGER).buildEntrySet(v));
     }
@@ -158,7 +155,7 @@ public class MenuEntityHandler {
 
             });
 
-            evt.addWidget(new Button(0,  0, this.size, 3 * 24 + 8, StringTextComponent.EMPTY, button -> this.sides[0].playAmbientSound()) {
+            evt.addWidget(new Button(0,  0, this.size, 3 * 24 + 8, StringTextComponent.EMPTY, button -> {}) {
 
                 @Override
                 public void render(@Nonnull MatrixStack matrixStack, int mouseX, int mouseY, float partialTicks) {
@@ -171,11 +168,12 @@ public class MenuEntityHandler {
                 @Override
                 public void playDownSound(@Nonnull SoundHandler handler) {
 
+                    MenuEntityHandler.this.sides[0].playLivingSound(handler, (float) MenuEntityHandler.this.volume, MenuEntityHandler.this.hurtPlayer);
                 }
 
             });
 
-            evt.addWidget(new Button(0,  0, this.size, 3 * 24 + 8, StringTextComponent.EMPTY, button -> this.sides[1].playAmbientSound()) {
+            evt.addWidget(new Button(0,  0, this.size, 3 * 24 + 8, StringTextComponent.EMPTY, button -> {}) {
 
                 @Override
                 public void render(@Nonnull MatrixStack matrixStack, int mouseX, int mouseY, float partialTicks) {
@@ -188,6 +186,7 @@ public class MenuEntityHandler {
                 @Override
                 public void playDownSound(@Nonnull SoundHandler handler) {
 
+                    MenuEntityHandler.this.sides[1].playLivingSound(handler, (float) MenuEntityHandler.this.volume, MenuEntityHandler.this.hurtPlayer);
                 }
 
             });
@@ -320,6 +319,17 @@ public class MenuEntityHandler {
                     Collections.singleton(Objects.requireNonNull(ForgeRegistries.ENTITIES.getKey(type)).toString()))
                     .flatMap(Collection::stream).collect(Collectors.toList()));
         }
+    }
+
+    public enum MenuSide {
+
+        LEFT, RIGHT, BOTH;
+
+        public MenuSide inverse() {
+
+            return MenuSide.values()[(this.ordinal() + 1) % 2];
+        }
+
     }
 
     @SuppressWarnings("unused")
