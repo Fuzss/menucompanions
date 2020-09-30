@@ -178,8 +178,8 @@ public class MenuEntryBuilder {
             if (id != null) {
 
                 builder.setScale(JSONUtils.getFloat(displayobject, "scale"));
-                builder.setXOffset(JSONUtils.getInt(displayobject, "xOffset"));
-                builder.setYOffset(JSONUtils.getInt(displayobject, "yOffset"));
+                builder.setXOffset(JSONUtils.getInt(displayobject, "x_offset"));
+                builder.setYOffset(JSONUtils.getInt(displayobject, "y_offset"));
                 builder.setNbt(JSONUtils.getString(dataobject, "nbt"));
 
                 if (id == EntityType.PLAYER) {

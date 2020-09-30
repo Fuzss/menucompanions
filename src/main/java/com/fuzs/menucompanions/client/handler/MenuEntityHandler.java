@@ -90,7 +90,22 @@ public class MenuEntityHandler {
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Which side entities can be shown at.").defineEnum("Entity Side", MenuSide.BOTH), v -> {
 
             this.menuSide = v;
-            this.setEnabled();
+            // only refresh each side when this config value actually changes
+            Optional.ofNullable(this.sides[0]).ifPresent(container -> {
+
+                if (container.setEnabled(this.menuSide != MenuSide.RIGHT)) {
+
+                    this.setMenuSide(MenuSide.LEFT);
+                }
+            });
+
+            Optional.ofNullable(this.sides[1]).ifPresent(container -> {
+
+                if (container.setEnabled(this.menuSide != MenuSide.LEFT)) {
+
+                    this.setMenuSide(MenuSide.RIGHT);
+                }
+            });
         });
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on x-axis from original position on left side.").defineInRange("Left X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[0] = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on y-axis from original position on left side.").defineInRange("Left Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[1] = v);
@@ -123,14 +138,6 @@ public class MenuEntityHandler {
 
         this.sides[0] = new EntityMenuContainer(this.mc, this.renderWorld);
         this.sides[1] = new EntityMenuContainer(this.mc, this.renderWorld);
-        this.setEnabled();
-    }
-
-    private void setEnabled() {
-
-        // is also called when the config reloads, that might happen at some point before everything is create here, who knows
-        Optional.ofNullable(this.sides[0]).ifPresent(container -> container.setEnabled(this.menuSide != MenuSide.RIGHT));
-        Optional.ofNullable(this.sides[1]).ifPresent(container -> container.setEnabled(this.menuSide != MenuSide.LEFT));
     }
 
     private void onGuiInit(final GuiScreenEvent.InitGuiEvent.Post evt) {
@@ -253,6 +260,7 @@ public class MenuEntityHandler {
             // entries for side are empty
             if (entry == null) {
 
+                this.sides[side.ordinal()].setEnabled(false);
                 return;
             }
 

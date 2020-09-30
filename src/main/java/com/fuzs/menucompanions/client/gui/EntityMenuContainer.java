@@ -221,6 +221,7 @@ public class EntityMenuContainer {
             return;
         }
 
+        this.world.setActiveContainer(this);
         List<Entity> entities = Stream.of(this.selfAndPassengers).filter(entity -> entity instanceof LivingEntity).collect(Collectors.toList());
         if (entities.isEmpty()) {
 
@@ -270,9 +271,15 @@ public class EntityMenuContainer {
         return !this.valid;
     }
 
-    public void setEnabled(boolean enabled) {
+    public boolean setEnabled(boolean enabled) {
 
-        this.enabled = enabled;
+        if (this.enabled != enabled) {
+
+            this.enabled = enabled;
+            return true;
+        }
+
+        return false;
     }
 
     private static void setRotationAngles(Entity entity, float mouseX, float mouseY) {

@@ -192,8 +192,8 @@ public class EntityMenuEntry {
         if (this.isTypeSet()) {
 
             jsonobject.addProperty("scale", this.scale);
-            jsonobject.addProperty("xOffset", this.xOffset);
-            jsonobject.addProperty("yOffset", this.yOffset);
+            jsonobject.addProperty("x_offset", this.xOffset);
+            jsonobject.addProperty("y_offset", this.yOffset);
         }
 
         jsonobject.addProperty("nameplate", this.nameplate);

@@ -64,6 +64,7 @@ public class MenuCompanions {
 
     private void onLoadComplete(final FMLLoadCompleteEvent evt) {
 
+        JSONConfigUtil.load(JSON_CONFIG_NAME, MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
         this.handler.createSides();
         ConfigManager.sync();
     }

@@ -75,7 +75,7 @@ public class MenuEntityProvider {
             }
         }
 
-        throw new IllegalStateException("Unreachable statement");
+        return null;
     }
 
     public static void serialize(String jsonName, File jsonFile) {
