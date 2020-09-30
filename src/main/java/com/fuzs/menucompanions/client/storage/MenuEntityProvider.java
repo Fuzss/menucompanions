@@ -40,7 +40,6 @@ public class MenuEntityProvider {
             new MenuEntryBuilder().setType(EntityType.SKELETON).setLeft().setWeight(3).build(),
             new MenuEntryBuilder().setType(EntityType.PIGLIN).setLeft().setWeight(13).build(),
             new MenuEntryBuilder().setType(EntityType.PIGLIN).setLeft().setWeight(3).setNbt("{IsBaby:1}").build(),
-            new MenuEntryBuilder().setType(EntityType.field_242287_aj).setLeft().setWeight(6).build(),
             new MenuEntryBuilder().setType(EntityType.HOGLIN).setLeft().setWeight(12).build(),
             new MenuEntryBuilder().setType(EntityType.HOGLIN).setLeft().setNbt("{Age:-24000}").build(),
             new MenuEntryBuilder().setType(EntityType.HOGLIN).setLeft().setNbt("{Age:-24000,Passengers:[{id:piglin,IsBaby:1}]}").build(),

@@ -15,7 +15,6 @@ import net.minecraft.util.RegistryKey;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.world.DimensionType;
-import net.minecraft.world.IServerWorld;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -24,13 +23,13 @@ import javax.annotation.Nonnull;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class MenuClientWorld extends ClientWorld implements IServerWorld {
+public class MenuClientWorld extends ClientWorld {
 
     private EntityMenuContainer activeContainer;
 
-    public MenuClientWorld(ClientPlayNetHandler connection, ClientWorldInfo worldInfo, RegistryKey<World> dimension, DimensionType dimensionType, Supplier<IProfiler> profiler, WorldRenderer worldRenderer) {
+    public MenuClientWorld(ClientPlayNetHandler connection, ClientWorldInfo worldInfo, RegistryKey<World> worldKey, RegistryKey<DimensionType> dimensionKey, DimensionType dimensionType, Supplier<IProfiler> profiler, WorldRenderer worldRenderer) {
 
-        super(connection, worldInfo, dimension, dimensionType, 0, profiler, worldRenderer, false, 0L);
+        super(connection, worldInfo, worldKey, dimensionKey, dimensionType, 0, profiler, worldRenderer, false, 0L);
     }
 
     @Override
@@ -98,13 +97,6 @@ public class MenuClientWorld extends ClientWorld implements IServerWorld {
         }
 
         return particlestatus;
-    }
-
-    @SuppressWarnings("NullableProblems")
-    @Override
-    public ServerWorld getWorld() {
-
-        return null;
     }
 
     public void setActiveContainer(EntityMenuContainer container) {

@@ -19,7 +19,7 @@ import net.minecraft.nbt.NBTUtil;
 import net.minecraft.util.Util;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.DifficultyInstance;
-import net.minecraft.world.IServerWorld;
+import net.minecraft.world.IWorld;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
@@ -115,7 +115,7 @@ public class CreateEntityUtil {
         gameProfile = input;
     }
 
-    public static void onInitialSpawn(Entity entity, IServerWorld worldIn, boolean noNbt) {
+    public static void onInitialSpawn(Entity entity, IWorld worldIn, boolean noNbt) {
 
         // prevents crash in sprite renderers
         entity.ticksExisted = 2;

@@ -330,8 +330,8 @@ public class EntityMenuContainer {
         int alpha = (int) (backgroundOpacity * 255.0F) << 24;
         FontRenderer fontrenderer = Minecraft.getInstance().fontRenderer;
         int textWidth = -fontrenderer.func_238414_a_(displayNameIn) / 2;
-        fontrenderer.func_243247_a(displayNameIn, textWidth, renderOffset, 553648127, false, matrix4f, bufferIn, true, alpha, packedLightIn);
-        fontrenderer.func_243247_a(displayNameIn, textWidth, renderOffset, -1, false, matrix4f, bufferIn, false, 0, packedLightIn);
+        fontrenderer.func_238416_a_(displayNameIn, textWidth, renderOffset, 553648127, false, matrix4f, bufferIn, true, alpha, packedLightIn);
+        fontrenderer.func_238416_a_(displayNameIn, textWidth, renderOffset, -1, false, matrix4f, bufferIn, false, 0, packedLightIn);
 
         matrixStackIn.pop();
     }

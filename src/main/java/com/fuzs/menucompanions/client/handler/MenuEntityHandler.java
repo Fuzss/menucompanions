@@ -21,8 +21,9 @@ import net.minecraft.client.network.play.ClientPlayNetHandler;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.server.IDynamicRegistries;
+import net.minecraft.util.RegistryKey;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.registry.DynamicRegistries;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.Difficulty;
@@ -126,8 +127,9 @@ public class MenuEntityHandler {
             @SuppressWarnings("ConstantConditions")
             ClientPlayNetHandler clientPlayNetHandler = new ClientPlayNetHandler(this.mc, null, null, profileIn);
             ClientWorld.ClientWorldInfo worldInfo = new ClientWorld.ClientWorldInfo(Difficulty.HARD, false, false);
-            DimensionType dimensionType = DynamicRegistries.func_239770_b_().func_230520_a_().func_243576_d(DimensionType.THE_NETHER);
-            this.renderWorld = new MenuClientWorld(clientPlayNetHandler, worldInfo, World.THE_NETHER, dimensionType, this.mc::getProfiler, this.mc.worldRenderer);
+            RegistryKey<DimensionType> registrykey = DimensionType.THE_NETHER;
+            DimensionType dimensiontype = IDynamicRegistries.func_239770_b_().func_230520_a_().getValueForKey(registrykey);
+            this.renderWorld = new MenuClientWorld(clientPlayNetHandler, worldInfo, World.THE_NETHER, registrykey, dimensiontype, this.mc::getProfiler, this.mc.worldRenderer);
         } catch (Exception e) {
 
             MenuCompanions.LOGGER.error("Unable to create rendering world: {}", e.getMessage());
