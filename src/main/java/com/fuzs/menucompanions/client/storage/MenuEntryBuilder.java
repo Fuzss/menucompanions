@@ -1,5 +1,6 @@
 package com.fuzs.menucompanions.client.storage;
 
+import com.fuzs.menucompanions.MenuCompanions;
 import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
 import com.fuzs.menucompanions.client.util.IEntrySerializer;
 import com.google.gson.JsonElement;
@@ -10,6 +11,7 @@ import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.util.JSONUtils;
 
 import javax.annotation.Nullable;
+import java.util.Locale;
 
 @SuppressWarnings({"UnusedReturnValue", "unused"})
 public class MenuEntryBuilder {
@@ -167,22 +169,33 @@ public class MenuEntryBuilder {
             JsonObject jsonobject = JSONUtils.getJsonObject(element, "mob_entry");
             JsonObject displayobject = JSONUtils.getJsonObject(jsonobject, EntityMenuEntry.DISPLAY_NAME);
             JsonObject dataobject = JSONUtils.getJsonObject(jsonobject, EntityMenuEntry.DATA_NAME);
+            String id = JSONUtils.getString(jsonobject, "id");
 
-            EntityType<?> id = IEntrySerializer.deserializeEntityType(jsonobject);
-            builder.setType(id);
+            EntityType<?> type = null;
+            if (!id.toLowerCase(Locale.ROOT).equals(IEntrySerializer.RANDOM)) {
+
+                type = IEntrySerializer.readEntityType(id);
+                if (type == null) {
+
+                    MenuCompanions.LOGGER.warn("Unable to read entry with id {}", id);
+                    return null;
+                }
+            }
+
+            builder.setType(type);
             builder.setWeight(JSONUtils.getInt(jsonobject, "weight"));
             builder.setNameplate(JSONUtils.getBoolean(displayobject, "nameplate"));
             builder.setParticles(JSONUtils.getBoolean(displayobject, "particles"));
             builder.setSide(IEntrySerializer.deserializeEnum(displayobject, "side", MenuEntityHandler.MenuSide.class, MenuEntityHandler.MenuSide.BOTH));
             builder.setData(IEntrySerializer.deserializeEnumProperties(dataobject, EntityMenuEntry.PropertyFlags.class, EntityMenuEntry.PropertyFlags::toString, EntityMenuEntry.PropertyFlags::getPropertyMask));
-            if (id != null) {
+            if (type != null) {
 
                 builder.setScale(JSONUtils.getFloat(displayobject, "scale"));
                 builder.setXOffset(JSONUtils.getInt(displayobject, "x_offset"));
                 builder.setYOffset(JSONUtils.getInt(displayobject, "y_offset"));
                 builder.setNbt(JSONUtils.getString(dataobject, "nbt"));
 
-                if (id == EntityType.PLAYER) {
+                if (type == EntityType.PLAYER) {
 
                     JsonObject playerobject = JSONUtils.getJsonObject(jsonobject, EntityMenuEntry.PLAYER_NAME);
                     JsonObject modelobject = JSONUtils.getJsonObject(playerobject, EntityMenuEntry.MODEL_NAME);
