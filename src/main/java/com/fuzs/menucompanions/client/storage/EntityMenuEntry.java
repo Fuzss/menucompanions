@@ -142,6 +142,11 @@ public class EntityMenuEntry {
         return this.readProperty(PropertyFlags.WALKING);
     }
 
+    public boolean isInLove() {
+
+        return this.readProperty(PropertyFlags.IN_LOVE);
+    }
+
     @Nullable
     public Entity create(MenuClientWorld worldIn) {
 
@@ -227,7 +232,8 @@ public class EntityMenuEntry {
         ON_GROUND("on_ground"),
         IN_WATER("in_water"),
         AGGRESSIVE("aggressive"),
-        WALKING("walking");
+        WALKING("walking"),
+        IN_LOVE("in_love");
 
         private final int identifier = 1 << this.ordinal();
         private final String name;

@@ -88,7 +88,7 @@ public interface IEntrySerializer {
 
     }
 
-    static <T extends Enum<T>> byte deserializeEnumProperties(JsonObject jsonobject, Class<T> clazz, Function<T, String> key, Function<T, Integer> value) {
+    static <T extends Enum<T>> int deserializeEnumProperties(JsonObject jsonobject, Class<T> clazz, Function<T, String> key, Function<T, Integer> value) {
 
         byte data = 0;
         for (T constant : clazz.getEnumConstants()) {

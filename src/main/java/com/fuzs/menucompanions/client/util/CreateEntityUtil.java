@@ -5,17 +5,11 @@ import com.fuzs.menucompanions.client.entity.MenuClientPlayerEntity;
 import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
 import com.mojang.authlib.GameProfile;
-import net.minecraft.block.BlockState;
 import net.minecraft.entity.*;
-import net.minecraft.entity.monster.EndermanEntity;
-import net.minecraft.entity.monster.ZombifiedPiglinEntity;
-import net.minecraft.entity.passive.WolfEntity;
 import net.minecraft.inventory.EquipmentSlotType;
-import net.minecraft.item.DyeColor;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
-import net.minecraft.nbt.NBTUtil;
 import net.minecraft.util.Util;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.DifficultyInstance;
@@ -88,8 +82,12 @@ public class CreateEntityUtil {
                 entity.read(compound);
             } catch (Exception e) {
 
-                // world is casted to ServerWorld in IAngerable, so we need to handle those mobs manually
-                readAngerableAdditional(entity, compound);
+                // just enable held items and armor items to show at least in case nothing else works
+                // world is casted to ServerWorld in IAngerable, but that's fine as the problematic method is always called after everything else has been read
+                if (entity instanceof MobEntity && !(entity instanceof IAngerable)) {
+
+                    readLivingAdditional(entity, compound);
+                }
             }
         }, () -> {
 
@@ -155,43 +153,6 @@ public class CreateEntityUtil {
             Stream.of(EquipmentSlotType.values())
                     .filter(slot -> slot.getSlotType() == EquipmentSlotType.Group.HAND)
                     .forEach(slot -> entity.setItemStackToSlot(slot, ItemStack.read(listnbt.getCompound(slot.getIndex()))));
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    private static void readAngerableAdditional(Entity entity, CompoundNBT compound) {
-
-        if (entity instanceof MobEntity) {
-
-            readLivingAdditional(entity, compound);
-        }
-
-        if (entity instanceof EndermanEntity) {
-
-            BlockState blockstate = null;
-            if (compound.contains("carriedBlockState", 10)) {
-
-                blockstate = NBTUtil.readBlockState(compound.getCompound("carriedBlockState"));
-                if (blockstate.isAir()) {
-
-                    blockstate = null;
-                }
-            }
-
-            ((EndermanEntity) entity).setHeldBlockState(blockstate);
-        } else if (entity instanceof ZombifiedPiglinEntity) {
-
-            ((ZombifiedPiglinEntity) entity).setChild(compound.getBoolean("IsBaby"));
-        } else if (entity instanceof WolfEntity) {
-
-            if (compound.contains("CollarColor", 99)) {
-
-                ((WolfEntity) entity).setCollarColor(DyeColor.byId(compound.getInt("CollarColor")));
-            }
-
-            ((WolfEntity) entity).setTamed(compound.hasUniqueId("Owner") || !compound.getString("Owner").isEmpty());
-            ((WolfEntity) entity).func_233687_w_(compound.getBoolean("Sitting"));
-            ((WolfEntity) entity).func_233686_v_(((WolfEntity) entity).func_233685_eM_());
         }
     }
 

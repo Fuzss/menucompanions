@@ -36,10 +36,12 @@ public class MenuEntryBuilder {
         this.weight = Math.max(1, this.weight);
         if (this.type != null) {
 
-            this.scale = this.scale != 1.0F ? this.scale : EntityMenuEntry.getScale(this.type.getWidth(), this.type.getHeight());
+            if (this.scale <= 0.0F) {
+
+                this.scale = EntityMenuEntry.getScale(this.type.getWidth(), this.type.getHeight());
+            }
         } else {
 
-            this.scale = 1.0F;
             this.xOffset = 0;
             this.yOffset = 0;
         }
@@ -64,9 +66,9 @@ public class MenuEntryBuilder {
         return this;
     }
 
-    public MenuEntryBuilder setData(byte data) {
+    public MenuEntryBuilder setData(int data) {
 
-        this.data = data;
+        this.data = (byte) data;
         return this;
     }
 
@@ -148,9 +150,9 @@ public class MenuEntryBuilder {
         return this;
     }
 
-    public MenuEntryBuilder setModelParts(byte modelParts) {
+    public MenuEntryBuilder setModelParts(int modelParts) {
 
-        this.modelParts = modelParts;
+        this.modelParts = (byte) modelParts;
         return this;
     }
 

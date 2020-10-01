@@ -21,6 +21,7 @@ import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.MobEntity;
+import net.minecraft.entity.passive.BeeEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.particles.ParticleTypes;
 import net.minecraft.util.DamageSource;
@@ -55,6 +56,7 @@ public class EntityMenuContainer {
     private Entity[] selfAndPassengers;
     private boolean tick;
     private boolean walking;
+    private boolean inLove;
     private float scale;
     private int xOffset;
     private int yOffset;
@@ -74,6 +76,7 @@ public class EntityMenuContainer {
         this.selfAndPassengers = entity.getSelfAndPassengers().toArray(Entity[]::new);
         this.tick = entry.isTick();
         this.walking = entry.isWalking();
+        this.inLove = entry.isInLove();
         this.scale = entry.getScale(entity);
         this.xOffset = (side == MenuEntityHandler.MenuSide.RIGHT ? -1 : 1) * entry.getXOffset();
         this.yOffset = -entry.getYOffset();
@@ -117,9 +120,31 @@ public class EntityMenuContainer {
                     this.updateLimbSwing(livingEntity, 0.6F);
                 }
 
+                if (entity instanceof BeeEntity && ((BeeEntity) entity).hasNectar() && this.world.rand.nextFloat() < 0.05F) {
+
+                    for(int i = 0; i < this.world.rand.nextInt(2) + 1; ++i) {
+
+                        double posX = MathHelper.lerp(this.world.rand.nextDouble(), entity.getPosX() - 0.3, entity.getPosX() + 0.3);
+                        double posY = entity.getPosYHeight(0.5);
+                        double posZ = MathHelper.lerp(this.world.rand.nextDouble(), entity.getPosZ() - 0.3, entity.getPosZ() + 0.3);
+                        this.world.addParticle(ParticleTypes.FALLING_NECTAR, posX, posY, posZ, 0.0, 0.0, 0.0);
+                    }
+                }
+
                 if (this.tick) {
 
                     this.tick = MenuEntityHandler.runOrElse(entity, safeEntity -> ((LivingEntity) safeEntity).livingTick(), safeEntity -> {});
+                }
+            }
+
+            if (this.inLove) {
+
+                if (entity.ticksExisted % 10 == 0) {
+
+                    double d0 = this.world.rand.nextGaussian() * 0.02;
+                    double d1 = this.world.rand.nextGaussian() * 0.02;
+                    double d2 = this.world.rand.nextGaussian() * 0.02;
+                    this.world.addParticle(ParticleTypes.HEART, entity.getPosXRandom(1.0), entity.getPosYRandom() + 0.5, entity.getPosZRandom(1.0), d0, d1, d2);
                 }
             }
 
@@ -153,11 +178,13 @@ public class EntityMenuContainer {
         scale *= this.scale;
         posX += this.xOffset;
         posY += this.yOffset;
+        // only offset upwards, never downwards
         posY -= Math.max(0.0F, 0.9F - this.entity.getHeight() / 2.0F) * 30;
         mouseX += posX;
         mouseY += posY;
         mouseY -= this.entity.getEyeHeight() / 1.62F * 50.0F * this.scale;
 
+        RenderSystem.disableLighting();
         RenderSystem.pushMatrix();
         RenderSystem.translatef((float) posX, (float) posY, 50.0F);
         RenderSystem.scalef(1.0F, 1.0F, -1.0F);
