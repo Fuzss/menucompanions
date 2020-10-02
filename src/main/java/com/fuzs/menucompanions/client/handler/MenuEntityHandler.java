@@ -32,9 +32,9 @@ import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderNameplateEvent;
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -44,16 +44,15 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class MenuEntityHandler {
+public class MenuEntityHandler implements IEventHandler {
 
     private static final ResourceLocation RELOAD_TEXTURES = new ResourceLocation(MenuCompanions.MODID, "textures/gui/reload.png");
 
     private final Minecraft mc = Minecraft.getInstance();
-    private final List<Consumer<? extends Event>> events = Lists.newArrayList();
 
     private ReloadMode reloadMode;
     private MenuSide menuSide;
-    private final int[] offsets = new int[4];
+    private final int[] offsets = new int[6];
     private boolean playSounds;
     private double volume;
     private boolean hurtPlayer;
@@ -70,23 +69,20 @@ public class MenuEntityHandler {
         this.addListener(this::onGuiOpen);
         this.addListener(this::onDrawScreen);
         this.addListener(this::onClientTick);
-        this.addListener(this::onRenderNameplate);
+        this.addListener(this::onRenderNameplate, EventPriority.HIGHEST);
         this.setupConfig(builder);
-    }
-
-    private <T extends Event> void addListener(Consumer<T> consumer) {
-
-        this.events.add(consumer);
     }
 
     public void load() {
 
-        this.events.forEach(MinecraftForge.EVENT_BUS::addListener);
+        EVENTS.forEach(EventStorage::register);
     }
 
     private void setupConfig(ForgeConfigSpec.Builder builder) {
 
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("When to show reload button on main menu. By default requires the control key to be pressed.").defineEnum("Reload Button", ReloadMode.RIGHT_CONTROL), v -> this.reloadMode = v);
+        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Reload button offset on x-axis from original position.").defineInRange("Button X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[4] = v);
+        ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Reload button offset on y-axis from original position.").defineInRange("Button Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[5] = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Which side entities can be shown at.").defineEnum("Entity Side", MenuSide.BOTH), v -> {
 
             this.menuSide = v;
@@ -107,6 +103,7 @@ public class MenuEntityHandler {
                 }
             });
         });
+
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on x-axis from original position on left side.").defineInRange("Left X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[0] = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on y-axis from original position on left side.").defineInRange("Left Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[1] = v);
         ConfigManager.registerEntry(ModConfig.Type.CLIENT, builder.comment("Offset on x-axis from original position on right side.").defineInRange("Right X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[2] = v);
@@ -131,7 +128,7 @@ public class MenuEntityHandler {
         } catch (Exception e) {
 
             MenuCompanions.LOGGER.error("Unable to create rendering world: {}", e.getMessage());
-            this.events.forEach(MinecraftForge.EVENT_BUS::unregister);
+            EVENTS.forEach(EventStorage::unregister);
 
             return;
         }
@@ -157,8 +154,8 @@ public class MenuEntityHandler {
                 public void render(@Nonnull MatrixStack matrixStack, int mouseX, int mouseY, float partialTicks) {
 
                     this.visible = MenuEntityHandler.this.reloadMode.requiresControl() && Screen.hasControlDown() || MenuEntityHandler.this.reloadMode.isAlways();
-                    this.x = evt.getGui().width / 2 + (MenuEntityHandler.this.reloadMode.isLeft() ? -(100 + 24 * 2) : 104 + 24);
-                    this.y = evt.getGui().height / 4 + 48 + 72 + 12;
+                    this.x = evt.getGui().width / 2 + (MenuEntityHandler.this.reloadMode.isLeft() ? -(100 + 24 * 2 - MenuEntityHandler.this.offsets[4]) : 104 + 24 - MenuEntityHandler.this.offsets[4]);
+                    this.y = evt.getGui().height / 4 + 48 + 72 + 12 - MenuEntityHandler.this.offsets[5];
                     super.render(matrixStack, mouseX, mouseY, partialTicks);
                 }
 
@@ -291,7 +288,7 @@ public class MenuEntityHandler {
             action.accept(entity);
         } catch (Exception e) {
 
-            MenuCompanions.LOGGER.error("Unable to handle Entity {}", entity.getDisplayName().getString(), e);
+            MenuCompanions.LOGGER.error("Unable to handle Entity {}: {}", entity.getDisplayName().getString(), e.getMessage());
             orElse.accept(entity);
 
             return false;
