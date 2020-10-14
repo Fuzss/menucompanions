@@ -42,8 +42,8 @@ public class MenuCompanions {
             @Override
             public void run() {
 
-                // this also creates the folder for the default Forge config
-                JSONConfigUtil.load(JSON_CONFIG_NAME, MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
+                // creates the folder for the default Forge config
+                JSONConfigUtil.mkdir(MODID);
                 ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
                 MenuCompanions.this.handler.setup(builder);
                 ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, builder.build(), ConfigManager.configNameForFolder(ModConfig.Type.CLIENT, MODID));
@@ -64,6 +64,7 @@ public class MenuCompanions {
 
     private void onLoadComplete(final FMLLoadCompleteEvent evt) {
 
+        // only load this here as modded entities won't have been registered much earlier
         JSONConfigUtil.load(JSON_CONFIG_NAME, MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
         this.handler.createSides();
         ConfigManager.sync();

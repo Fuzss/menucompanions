@@ -14,6 +14,15 @@ public class JSONConfigUtil {
 
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
+    public static void mkdir(String modId) {
+
+        File modDir = getDirPath(modId);
+        if (!modDir.exists()) {
+
+            modDir.mkdir();
+        }
+    }
+
     public static void load(String jsonName, String modId, BiConsumer<String, File> serializer, Consumer<FileReader> deserializer) {
 
         File jsonFile = getFilePath(jsonName, modId);
@@ -25,7 +34,6 @@ public class JSONConfigUtil {
 
         if (!jsonFile.exists()) {
 
-            jsonFile.getParentFile().mkdir();
             serializer.accept(jsonName, jsonFile);
         }
     }
@@ -70,6 +78,11 @@ public class JSONConfigUtil {
 
             MenuCompanions.LOGGER.error("Failed to read {} in config directory: {}", jsonName, e);
         }
+    }
+
+    public static File getDirPath(String modId) {
+
+        return new File(FMLPaths.CONFIGDIR.get().toFile(), modId);
     }
 
     public static File getFilePath(String jsonName, String modId) {

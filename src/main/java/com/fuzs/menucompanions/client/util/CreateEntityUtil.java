@@ -60,21 +60,25 @@ public class CreateEntityUtil {
 
     private static Optional<Entity> loadEntity(CompoundNBT compound, MenuClientWorld worldIn) {
 
-        try {
+        if (EntityType.readEntityType(compound).map(entityType ->
+                MenuEntityHandler.isAllowed(entityType) ? entityType : null).isPresent()) {
 
-            return loadEntityUnchecked(compound, worldIn);
-        } catch (RuntimeException runtimeexception) {
+            try {
 
-            MenuCompanions.LOGGER.warn("Exception loading entity: ", runtimeexception);
-            MenuEntityHandler.addToBlacklist(compound.getString("id"));
-            return Optional.empty();
+                return loadEntityUnchecked(compound, worldIn);
+            } catch (RuntimeException runtimeexception) {
+
+                MenuCompanions.LOGGER.warn("Exception loading entity: ", runtimeexception);
+                MenuEntityHandler.addToBlacklist(compound.getString("id"));
+            }
         }
+
+        return Optional.empty();
     }
 
     public static Optional<Entity> loadEntityUnchecked(CompoundNBT compound, MenuClientWorld worldIn) {
 
         return Util.acceptOrElse(EntityType.readEntityType(compound)
-                .map(entityType -> MenuEntityHandler.isAllowed(entityType) ? entityType : null)
                 .map(entityType -> create(worldIn, entityType)), entity -> {
 
             try {
@@ -92,7 +96,7 @@ public class CreateEntityUtil {
         }, () -> {
 
             String id = compound.getString("id");
-            MenuCompanions.LOGGER.warn("Skipping Entity with id {}", id);
+            MenuCompanions.LOGGER.warn("Skipping entity with id {}", id);
             MenuEntityHandler.addToBlacklist(id);
         });
     }

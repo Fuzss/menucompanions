@@ -163,7 +163,7 @@ public class MenuEntryBuilder {
     }
 
     @Nullable
-    public static EntityMenuEntry deserialize(@Nullable JsonElement element) {
+    public static EntityMenuEntry deserialize(@Nullable JsonElement element, int version) {
 
         if (element != null && element.isJsonObject()) {
 

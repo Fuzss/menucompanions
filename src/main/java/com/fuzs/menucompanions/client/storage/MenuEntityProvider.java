@@ -5,7 +5,10 @@ import com.fuzs.menucompanions.config.JSONConfigUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import jdk.nashorn.internal.runtime.regexp.JoniRegExp;
 import net.minecraft.entity.EntityType;
+import net.minecraft.util.JSONUtils;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -17,6 +20,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class MenuEntityProvider {
+
+    private static final int FILE_VERSION = 1;
 
     private static final List<EntityMenuEntry> DEFAULT_MENU_ENTRIES = Lists.newArrayList(
             new MenuEntryBuilder().setType(EntityType.PLAYER).setRight().setWeight(31).renderName().build(),
@@ -81,6 +86,9 @@ public class MenuEntityProvider {
     public static void serialize(String jsonName, File jsonFile) {
 
         JsonArray jsonarray = new JsonArray();
+        JsonObject jsonobject = new JsonObject();
+        jsonobject.addProperty("__comment", "For documentation check the project page on CurseForge.");
+        jsonobject.addProperty("version", FILE_VERSION);
         DEFAULT_MENU_ENTRIES.forEach(entry -> jsonarray.add(entry.serialize()));
         JSONConfigUtil.saveToFile(jsonName, jsonFile, jsonarray);
     }
@@ -88,8 +96,32 @@ public class MenuEntityProvider {
     public static void deserialize(FileReader reader) {
 
         MENU_ENTRIES.clear();
-        Stream.of(JSONConfigUtil.GSON.fromJson(reader, JsonElement[].class))
-                .forEach(element -> Optional.ofNullable(MenuEntryBuilder.deserialize(element)).ifPresent(MENU_ENTRIES::add));
+        JsonElement[] elements = JSONConfigUtil.GSON.fromJson(reader, JsonElement[].class);
+        int version = 0;
+        for (JsonElement jsonelement : elements) {
+
+            if (jsonelement != null && jsonelement.isJsonObject()) {
+
+                JsonObject jsonobject = jsonelement.getAsJsonObject();
+                if (jsonobject.has("version")) {
+
+                    version = JSONUtils.getInt(jsonobject, "version");
+                    break;
+                }
+            }
+        }
+
+        for (JsonElement jsonelement : elements) {
+
+            if (jsonelement != null && jsonelement.isJsonObject()) {
+
+                JsonObject jsonobject = jsonelement.getAsJsonObject();
+                if (jsonobject.has("id")) {
+
+                    Optional.ofNullable(MenuEntryBuilder.deserialize(jsonelement, version)).ifPresent(MENU_ENTRIES::add);
+                }
+            }
+        }
     }
 
 }
