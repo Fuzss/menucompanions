@@ -19,9 +19,8 @@ import java.util.stream.Collectors;
 
 public class MenuEntityProvider {
 
-    private static final int FILE_VERSION = 1;
-
     private static final List<EntityMenuEntry> DEFAULT_MENU_ENTRIES = Lists.newArrayList(
+
             new MenuEntryBuilder().setType(EntityType.PLAYER).setRight().setWeight(31).renderName().build(),
             new MenuEntryBuilder().setType(EntityType.PLAYER).setRight().renderName().setNbt("{ArmorItems:[{Count:1,id:netherite_boots},{Count:1,id:netherite_leggings},{Count:1,id:netherite_chestplate},{Count:1,id:netherite_helmet}]}").build(),
             new MenuEntryBuilder().setType(EntityType.ZOMBIFIED_PIGLIN).setLeft().setWeight(13).build(),
@@ -56,6 +55,7 @@ public class MenuEntityProvider {
             new MenuEntryBuilder().setType(EntityType.STRIDER).setLeft().setWeight(1).setNbt("{Saddle:1,Passengers:[{id:zombified_piglin,HandItems:[{Count:1,id:warped_fungus_on_a_stick},{}]}]}").build()
     );
 
+    private static final int FILE_FORMAT = 1;
     private static final List<EntityMenuEntry> MENU_ENTRIES = Lists.newArrayList();
 
     @Nullable
@@ -86,7 +86,8 @@ public class MenuEntityProvider {
         JsonArray jsonarray = new JsonArray();
         JsonObject jsonobject = new JsonObject();
         jsonobject.addProperty("__comment", "For documentation check the project page on CurseForge.");
-        jsonobject.addProperty("version", FILE_VERSION);
+        jsonobject.addProperty("file_format", FILE_FORMAT);
+        jsonarray.add(jsonobject);
         DEFAULT_MENU_ENTRIES.forEach(entry -> jsonarray.add(entry.serialize()));
         JSONConfigUtil.saveToFile(jsonName, jsonFile, jsonarray);
     }
@@ -101,9 +102,9 @@ public class MenuEntityProvider {
             if (jsonelement != null && jsonelement.isJsonObject()) {
 
                 JsonObject jsonobject = jsonelement.getAsJsonObject();
-                if (jsonobject.has("version")) {
+                if (jsonobject.has("file_format")) {
 
-                    version = JSONUtils.getInt(jsonobject, "version");
+                    version = JSONUtils.getInt(jsonobject, "file_format");
                     break;
                 }
             }

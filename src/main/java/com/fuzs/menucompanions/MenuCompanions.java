@@ -24,7 +24,7 @@ public class MenuCompanions {
 
     public static final String MODID = "menucompanions";
     public static final String NAME = "Menu Companions";
-    public static final Logger LOGGER = LogManager.getLogger(MenuCompanions.NAME);
+    public static final Logger LOGGER = LogManager.getLogger(NAME);
 
     public static final String JSON_CONFIG_NAME = "mobs.json";
     private final MenuEntityElement handler = new MenuEntityElement();

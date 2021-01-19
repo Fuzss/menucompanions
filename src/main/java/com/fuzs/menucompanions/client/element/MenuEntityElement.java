@@ -56,7 +56,11 @@ public class MenuEntityElement implements IEventElement {
     private static final ResourceLocation RELOAD_TEXTURES = new ResourceLocation(MenuCompanions.MODID, "textures/gui/reload.png");
 
     private final Minecraft mc = Minecraft.getInstance();
+    private MenuClientWorld renderWorld;
+    private final EntityMenuContainer[] sides = new EntityMenuContainer[2];
+    private final Widget[] widgets = new Widget[2];
 
+    // config settings
     private ReloadMode reloadMode;
     private final int[] offsets = new int[6];
     private int size;
@@ -64,10 +68,6 @@ public class MenuEntityElement implements IEventElement {
     private boolean hurtPlayer;
     private static Set<EntityType<?>> blacklist;
     private static ForgeConfigSpec.ConfigValue<List<String>> blacklistSpec;
-
-    private MenuClientWorld renderWorld;
-    private final EntityMenuContainer[] sides = new EntityMenuContainer[2];
-    private final Widget[] widgets = new Widget[2];
 
     public void setup(ForgeConfigSpec.Builder builder) {
 
