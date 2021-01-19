@@ -1,11 +1,11 @@
 package com.fuzs.menucompanions.client.storage;
 
-import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
+import com.fuzs.menucompanions.client.element.MenuEntityElement;
 import com.fuzs.menucompanions.client.util.CreateEntityUtil;
 import com.fuzs.menucompanions.client.util.IEntrySerializer;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
-import com.fuzs.menucompanions.mixin.EntityAccessorMixin;
-import com.fuzs.menucompanions.mixin.PlayerEntityAccessorMixin;
+import com.fuzs.menucompanions.mixin.client.accessor.IEntityAccessor;
+import com.fuzs.menucompanions.mixin.client.accessor.IPlayerEntityAccessor;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
@@ -33,7 +33,7 @@ public class PlayerMenuEntry extends EntityMenuEntry {
     private final byte modelParts;
     private final boolean crouching;
 
-    public PlayerMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityHandler.MenuSide side, String profile, byte modelParts, boolean crouching) {
+    public PlayerMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityElement.MenuSide side, String profile, byte modelParts, boolean crouching) {
 
         super(type, compound, data, scale, xOffset, yOffset, nameplate, particles, weight, side);
         this.profile = profile;
@@ -48,9 +48,9 @@ public class PlayerMenuEntry extends EntityMenuEntry {
         return CreateEntityUtil.loadEntity(EntityType.PLAYER, this.compound, worldIn, entity -> {
 
             entity.setOnGround(this.readProperty(PropertyFlags.ON_GROUND));
-            ((EntityAccessorMixin) entity).setInWater(this.readProperty(PropertyFlags.IN_WATER));
+            ((IEntityAccessor) entity).setInWater(this.readProperty(PropertyFlags.IN_WATER));
             CreateEntityUtil.readLivingAdditional(entity, this.compound);
-            entity.getDataManager().set(PlayerEntityAccessorMixin.getPlayerModelFlag(), this.modelParts);
+            entity.getDataManager().set(IPlayerEntityAccessor.getPlayerModelFlag(), this.modelParts);
             if (this.crouching) {
 
                 entity.setPose(Pose.CROUCHING);

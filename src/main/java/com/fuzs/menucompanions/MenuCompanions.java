@@ -1,6 +1,6 @@
 package com.fuzs.menucompanions;
 
-import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
+import com.fuzs.menucompanions.client.element.MenuEntityElement;
 import com.fuzs.menucompanions.client.storage.MenuEntityProvider;
 import com.fuzs.menucompanions.config.ConfigManager;
 import com.fuzs.menucompanions.config.JSONConfigUtil;
@@ -12,7 +12,6 @@ import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.network.FMLNetworkConstants;
 import org.apache.commons.lang3.tuple.Pair;
@@ -28,12 +27,11 @@ public class MenuCompanions {
     public static final Logger LOGGER = LogManager.getLogger(MenuCompanions.NAME);
 
     public static final String JSON_CONFIG_NAME = "mobs.json";
-    private final MenuEntityHandler handler = new MenuEntityHandler();
+    private final MenuEntityElement handler = new MenuEntityElement();
 
     @SuppressWarnings("Convert2Lambda")
     public MenuCompanions() {
 
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onLoadComplete);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(ConfigManager::onModConfig);
 
         // Forge doesn't like this being a lambda
@@ -60,14 +58,9 @@ public class MenuCompanions {
     private void onClientSetup(final FMLClientSetupEvent evt) {
 
         this.handler.load();
-    }
-
-    private void onLoadComplete(final FMLLoadCompleteEvent evt) {
-
-        // only load this here as modded entities won't have been registered much earlier
+        // load this here as modded entities won't have been registered much earlier
         JSONConfigUtil.load(JSON_CONFIG_NAME, MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
         this.handler.createSides();
-        ConfigManager.sync();
     }
 
 }

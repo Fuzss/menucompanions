@@ -1,4 +1,4 @@
-package com.fuzs.menucompanions.mixin;
+package com.fuzs.menucompanions.mixin.client.accessor;
 
 import net.minecraft.client.particle.IParticleFactory;
 import net.minecraft.client.particle.ParticleManager;
@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 import java.util.Map;
 
 @Mixin(ParticleManager.class)
-public interface ParticleManagerAccessorMixin {
+public interface IParticleManagerAccessor {
 
     @Accessor
     Map<ResourceLocation, IParticleFactory<?>> getFactories();

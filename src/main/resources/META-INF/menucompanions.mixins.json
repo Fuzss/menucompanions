@@ -1,0 +1,20 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "compatibilityLevel": "JAVA_8",
+  "package": "com.fuzs.menucompanions.mixin",
+  "refmap": "menucompanions.refmap.json",
+  "mixins": [
+  ],
+  "client": [
+    "client.accessor.IParticleManagerAccessor",
+    "client.accessor.IEntityAccessor",
+    "client.accessor.IMobEntityAccessor",
+    "client.accessor.ILivingEntityAccessor",
+    "client.accessor.IPlayerEntityAccessor",
+    "client.accessor.IActiveRenderInfoAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,10 +1,10 @@
 package com.fuzs.menucompanions.client.storage;
 
-import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
+import com.fuzs.menucompanions.client.element.MenuEntityElement;
 import com.fuzs.menucompanions.client.util.CreateEntityUtil;
 import com.fuzs.menucompanions.client.util.IEntrySerializer;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
-import com.fuzs.menucompanions.mixin.EntityAccessorMixin;
+import com.fuzs.menucompanions.mixin.client.accessor.IEntityAccessor;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.entity.Entity;
@@ -36,9 +36,9 @@ public class EntityMenuEntry {
     private final boolean nameplate;
     private final boolean particles;
     private final int weight;
-    private final MenuEntityHandler.MenuSide side;
+    private final MenuEntityElement.MenuSide side;
 
-    public EntityMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityHandler.MenuSide side) {
+    public EntityMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityElement.MenuSide side) {
 
         this.type = type;
         this.compound = compound;
@@ -127,9 +127,9 @@ public class EntityMenuEntry {
         return this.weight;
     }
 
-    public boolean isSide(MenuEntityHandler.MenuSide side) {
+    public boolean isSide(MenuEntityElement.MenuSide side) {
 
-        return this.side == MenuEntityHandler.MenuSide.BOTH || this.side == side;
+        return this.side == MenuEntityElement.MenuSide.BOTH || this.side == side;
     }
 
     public boolean isTick() {
@@ -153,7 +153,7 @@ public class EntityMenuEntry {
         return CreateEntityUtil.loadEntity(this.getEntityType(), this.compound, worldIn, entity -> {
 
             entity.setOnGround(this.readProperty(PropertyFlags.ON_GROUND));
-            ((EntityAccessorMixin) entity).setInWater(this.readProperty(PropertyFlags.IN_WATER));
+            ((IEntityAccessor) entity).setInWater(this.readProperty(PropertyFlags.IN_WATER));
             if (entity instanceof MobEntity && this.readProperty(PropertyFlags.AGGRESSIVE)) {
 
                 ((MobEntity) entity).setAggroed(true);
@@ -224,36 +224,6 @@ public class EntityMenuEntry {
     protected boolean readProperty(PropertyFlags property) {
 
         return (this.data & property.getPropertyMask()) == property.getPropertyMask();
-    }
-
-    public enum PropertyFlags {
-
-        TICK("tick"),
-        ON_GROUND("on_ground"),
-        IN_WATER("in_water"),
-        AGGRESSIVE("aggressive"),
-        WALKING("walking"),
-        IN_LOVE("in_love");
-
-        private final int identifier = 1 << this.ordinal();
-        private final String name;
-
-        PropertyFlags(String name) {
-
-            this.name = name;
-        }
-
-        public int getPropertyMask() {
-
-            return this.identifier;
-        }
-
-        @Override
-        public String toString() {
-
-            return this.name;
-        }
-
     }
 
 }

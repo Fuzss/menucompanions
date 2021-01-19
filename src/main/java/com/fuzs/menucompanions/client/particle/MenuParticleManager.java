@@ -1,6 +1,6 @@
 package com.fuzs.menucompanions.client.particle;
 
-import com.fuzs.menucompanions.mixin.ParticleManagerAccessorMixin;
+import com.fuzs.menucompanions.mixin.client.accessor.IParticleManagerAccessor;
 import com.google.common.collect.EvictingQueue;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Queues;
@@ -35,7 +35,7 @@ public class MenuParticleManager {
 
     private final ClientWorld world;
     private final TextureManager renderer;
-    private final ParticleManagerAccessorMixin particles;
+    private final IParticleManagerAccessor particles;
     private final Map<IParticleRenderType, Queue<Particle>> byType = Maps.newIdentityHashMap();
     private final Queue<Particle> queue = Queues.newArrayDeque();
 
@@ -43,7 +43,7 @@ public class MenuParticleManager {
 
         this.world = world;
         this.renderer = mc.textureManager;
-        this.particles = (ParticleManagerAccessorMixin) mc.particles;
+        this.particles = (IParticleManagerAccessor) mc.particles;
     }
 
     public void addParticle(IParticleData particleData, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {

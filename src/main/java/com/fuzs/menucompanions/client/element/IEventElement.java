@@ -1,4 +1,4 @@
-package com.fuzs.menucompanions.client.handler;
+package com.fuzs.menucompanions.client.element;
 
 import com.google.common.collect.Lists;
 import net.minecraftforge.common.MinecraftForge;
@@ -8,7 +8,7 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import java.util.List;
 import java.util.function.Consumer;
 
-public interface IEventHandler {
+public interface IEventElement {
 
     List<EventStorage<? extends Event>> EVENTS = Lists.newArrayList();
 

@@ -1,12 +1,11 @@
 package com.fuzs.menucompanions.client.storage;
 
-import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
+import com.fuzs.menucompanions.client.element.MenuEntityElement;
 import com.fuzs.menucompanions.config.JSONConfigUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import jdk.nashorn.internal.runtime.regexp.JoniRegExp;
 import net.minecraft.entity.EntityType;
 import net.minecraft.util.JSONUtils;
 
@@ -17,7 +16,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class MenuEntityProvider {
 
@@ -61,7 +59,7 @@ public class MenuEntityProvider {
     private static final List<EntityMenuEntry> MENU_ENTRIES = Lists.newArrayList();
 
     @Nullable
-    public static EntityMenuEntry getRandomEntry(MenuEntityHandler.MenuSide side) {
+    public static EntityMenuEntry getRandomEntry(MenuEntityElement.MenuSide side) {
 
         List<EntityMenuEntry> sidedEntries = MENU_ENTRIES.stream().filter(entry -> entry.isSide(side)).collect(Collectors.toList());
         if (sidedEntries.isEmpty()) {

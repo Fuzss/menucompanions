@@ -1,7 +1,7 @@
 package com.fuzs.menucompanions.client.storage;
 
 import com.fuzs.menucompanions.MenuCompanions;
-import com.fuzs.menucompanions.client.handler.MenuEntityHandler;
+import com.fuzs.menucompanions.client.element.MenuEntityElement;
 import com.fuzs.menucompanions.client.util.IEntrySerializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -25,7 +25,7 @@ public class MenuEntryBuilder {
     private boolean nameplate = false;
     private boolean particles = true;
     private int weight = 1;
-    private MenuEntityHandler.MenuSide side = MenuEntityHandler.MenuSide.BOTH;
+    private MenuEntityElement.MenuSide side = MenuEntityElement.MenuSide.BOTH;
     private String profile = "";
     private byte modelParts = 127;
     private boolean crouching = false;
@@ -120,7 +120,7 @@ public class MenuEntryBuilder {
         return this;
     }
 
-    private MenuEntryBuilder setSide(MenuEntityHandler.MenuSide side) {
+    private MenuEntryBuilder setSide(MenuEntityElement.MenuSide side) {
 
         this.side = side;
         return this;
@@ -128,13 +128,13 @@ public class MenuEntryBuilder {
 
     public MenuEntryBuilder setLeft() {
 
-        this.side = MenuEntityHandler.MenuSide.LEFT;
+        this.side = MenuEntityElement.MenuSide.LEFT;
         return this;
     }
 
     public MenuEntryBuilder setRight() {
 
-        this.side = MenuEntityHandler.MenuSide.RIGHT;
+        this.side = MenuEntityElement.MenuSide.RIGHT;
         return this;
     }
 
@@ -188,8 +188,8 @@ public class MenuEntryBuilder {
             builder.setWeight(JSONUtils.getInt(jsonobject, "weight"));
             builder.setNameplate(JSONUtils.getBoolean(displayobject, "nameplate"));
             builder.setParticles(JSONUtils.getBoolean(displayobject, "particles"));
-            builder.setSide(IEntrySerializer.deserializeEnum(displayobject, "side", MenuEntityHandler.MenuSide.class, MenuEntityHandler.MenuSide.BOTH));
-            builder.setData(IEntrySerializer.deserializeEnumProperties(dataobject, EntityMenuEntry.PropertyFlags.class, EntityMenuEntry.PropertyFlags::toString, EntityMenuEntry.PropertyFlags::getPropertyMask));
+            builder.setSide(IEntrySerializer.deserializeEnum(displayobject, "side", MenuEntityElement.MenuSide.class, MenuEntityElement.MenuSide.BOTH));
+            builder.setData(IEntrySerializer.deserializeEnumProperties(dataobject, PropertyFlags.class, PropertyFlags::toString, PropertyFlags::getPropertyMask));
             if (type != null) {
 
                 builder.setScale(JSONUtils.getFloat(displayobject, "scale"));

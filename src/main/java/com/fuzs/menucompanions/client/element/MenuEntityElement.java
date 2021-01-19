@@ -1,9 +1,10 @@
-package com.fuzs.menucompanions.client.handler;
+package com.fuzs.menucompanions.client.element;
 
 import com.fuzs.menucompanions.MenuCompanions;
 import com.fuzs.menucompanions.client.gui.EntityMenuContainer;
 import com.fuzs.menucompanions.client.storage.EntityMenuEntry;
 import com.fuzs.menucompanions.client.storage.MenuEntityProvider;
+import com.fuzs.menucompanions.client.util.ReloadMode;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
 import com.fuzs.menucompanions.config.ConfigManager;
 import com.fuzs.menucompanions.config.EntryCollectionBuilder;
@@ -50,7 +51,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class MenuEntityHandler implements IEventHandler {
+public class MenuEntityElement implements IEventElement {
 
     private static final ResourceLocation RELOAD_TEXTURES = new ResourceLocation(MenuCompanions.MODID, "textures/gui/reload.png");
 
@@ -71,8 +72,8 @@ public class MenuEntityHandler implements IEventHandler {
     public void setup(ForgeConfigSpec.Builder builder) {
 
         // will prevent other mods from hooking into the player renderer on the main menu
-        this.addListener(this::onRenderPlayer1, EventPriority.HIGHEST);
-        this.addListener(this::onRenderPlayer2, EventPriority.LOWEST, true);
+        this.addListener(this::onRenderPlayerPre, EventPriority.HIGHEST);
+        this.addListener(this::onRenderPlayerPost, EventPriority.LOWEST, true);
 
         this.addListener(this::onGuiInit);
         this.addListener(this::onGuiOpen);
@@ -174,7 +175,7 @@ public class MenuEntityHandler implements IEventHandler {
             @SuppressWarnings("ConstantConditions")
             ClientPlayNetHandler clientPlayNetHandler = new ClientPlayNetHandler(this.mc, null,  new NetworkManager(PacketDirection.CLIENTBOUND), profileIn);
             ClientWorld.ClientWorldInfo worldInfo = new ClientWorld.ClientWorldInfo(Difficulty.HARD, false, false);
-            DimensionType dimensionType = DynamicRegistries.func_239770_b_().func_230520_a_().func_243576_d(DimensionType.THE_NETHER);
+            DimensionType dimensionType = DynamicRegistries.func_239770_b_().func_230520_a_().getOrThrow(DimensionType.THE_NETHER);
             this.renderWorld = new MenuClientWorld(clientPlayNetHandler, worldInfo, World.THE_NETHER, dimensionType, this.mc::getProfiler, this.mc.worldRenderer);
         } catch (Exception e) {
 
@@ -185,12 +186,12 @@ public class MenuEntityHandler implements IEventHandler {
         }
 
         // init tags as some entities such as piglins and minecarts depend on it
-        TagRegistryManager.func_242191_a();
+        TagRegistryManager.fetchTags();
         this.sides[0] = new EntityMenuContainer(this.mc, this.renderWorld);
         this.sides[1] = new EntityMenuContainer(this.mc, this.renderWorld);
     }
 
-    private void onRenderPlayer1(final RenderPlayerEvent.Pre evt) {
+    private void onRenderPlayerPre(final RenderPlayerEvent.Pre evt) {
 
         if (this.mc.currentScreen instanceof MainMenuScreen) {
 
@@ -198,7 +199,7 @@ public class MenuEntityHandler implements IEventHandler {
         }
     }
 
-    private void onRenderPlayer2(final RenderPlayerEvent.Pre evt) {
+    private void onRenderPlayerPost(final RenderPlayerEvent.Pre evt) {
 
         if (this.mc.currentScreen instanceof MainMenuScreen) {
 
@@ -226,7 +227,7 @@ public class MenuEntityHandler implements IEventHandler {
                 @Override
                 public void playDownSound(@Nonnull SoundHandler handler) {
 
-                    MenuEntityHandler.this.sides[0].playLivingSound(handler, (float) MenuEntityHandler.this.volume, MenuEntityHandler.this.hurtPlayer);
+                    MenuEntityElement.this.sides[0].playLivingSound(handler, (float) MenuEntityElement.this.volume, MenuEntityElement.this.hurtPlayer);
                 }
 
             };
@@ -242,7 +243,7 @@ public class MenuEntityHandler implements IEventHandler {
                 @Override
                 public void playDownSound(@Nonnull SoundHandler handler) {
 
-                    MenuEntityHandler.this.sides[1].playLivingSound(handler, (float) MenuEntityHandler.this.volume, MenuEntityHandler.this.hurtPlayer);
+                    MenuEntityElement.this.sides[1].playLivingSound(handler, (float) MenuEntityElement.this.volume, MenuEntityElement.this.hurtPlayer);
                 }
 
             };
@@ -287,7 +288,7 @@ public class MenuEntityHandler implements IEventHandler {
                     @Override
                     public void render(@Nonnull MatrixStack matrixStack, int mouseX, int mouseY, float partialTicks) {
 
-                        this.visible = MenuEntityHandler.this.reloadMode.requiresControl() && Screen.hasControlDown() || MenuEntityHandler.this.reloadMode.isAlways();
+                        this.visible = MenuEntityElement.this.reloadMode.requiresControl() && Screen.hasControlDown() || MenuEntityElement.this.reloadMode.isAlways();
                         super.render(matrixStack, mouseX, mouseY, partialTicks);
                     }
 
@@ -433,43 +434,6 @@ public class MenuEntityHandler implements IEventHandler {
     public enum MenuSide {
 
         LEFT, RIGHT, BOTH
-
-    }
-
-    @SuppressWarnings("unused")
-    private enum ReloadMode {
-
-        NEVER(false, false, false),
-        RIGHT_CONTROL(false, true, false),
-        RIGHT_ALWAYS(false, false, true),
-        LEFT_CONTROL(true, true, false),
-        LEFT_ALWAYS(true, false, true);
-
-        private final boolean left;
-        private final boolean control;
-        private final boolean always;
-
-        ReloadMode(boolean left, boolean control, boolean always) {
-
-            this.left = left;
-            this.control = control;
-            this.always = always;
-        }
-
-        public boolean isLeft() {
-
-            return this.left;
-        }
-
-        public boolean requiresControl() {
-
-            return this.control;
-        }
-
-        public boolean isAlways() {
-
-            return this.always;
-        }
 
     }
 

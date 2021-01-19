@@ -1,6 +1,6 @@
 package com.fuzs.menucompanions.client.entity;
 
-import com.fuzs.menucompanions.mixin.EntityAccessorMixin;
+import com.fuzs.menucompanions.mixin.client.accessor.IEntityAccessor;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.client.entity.player.RemoteClientPlayerEntity;
 import net.minecraft.client.network.play.NetworkPlayerInfo;
@@ -48,7 +48,7 @@ public class MenuClientPlayerEntity extends RemoteClientPlayerEntity {
     public ITextComponent getName() {
 
         ITextComponent itextcomponent = this.getCustomName();
-        return itextcomponent != null ? EntityAccessorMixin.unifyStyle(itextcomponent) : super.getName();
+        return itextcomponent != null ? IEntityAccessor.unifyStyle(itextcomponent) : super.getName();
     }
 
 }
