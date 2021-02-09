@@ -1,7 +1,7 @@
 package com.fuzs.menucompanions.client.util;
 
 import com.fuzs.menucompanions.MenuCompanions;
-import com.fuzs.menucompanions.client.entity.MenuClientPlayerEntity;
+import com.fuzs.menucompanions.client.entity.player.MenuClientPlayerEntity;
 import com.fuzs.menucompanions.client.element.MenuEntityElement;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
 import com.mojang.authlib.GameProfile;
@@ -61,7 +61,7 @@ public class CreateEntityUtil {
     private static Optional<Entity> loadEntity(CompoundNBT compound, MenuClientWorld worldIn) {
 
         if (EntityType.readEntityType(compound).map(entityType ->
-                MenuEntityElement.isAllowed(entityType) ? entityType : null).isPresent()) {
+                MenuEntityElement.get().isAllowed(entityType) ? entityType : null).isPresent()) {
 
             try {
 
@@ -69,7 +69,7 @@ public class CreateEntityUtil {
             } catch (RuntimeException runtimeexception) {
 
                 MenuCompanions.LOGGER.warn("Exception loading entity: ", runtimeexception);
-                MenuEntityElement.addToBlacklist(compound.getString("id"));
+                MenuEntityElement.get().addToBlacklist(compound.getString("id"));
             }
         }
 
@@ -97,7 +97,7 @@ public class CreateEntityUtil {
 
             String id = compound.getString("id");
             MenuCompanions.LOGGER.warn("Skipping entity with id {}", id);
-            MenuEntityElement.addToBlacklist(id);
+            MenuEntityElement.get().addToBlacklist(id);
         });
     }
 

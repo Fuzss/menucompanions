@@ -15,7 +15,6 @@ import net.minecraft.nbt.CompoundNBT;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -165,7 +164,6 @@ public class EntityMenuEntry {
         });
     }
 
-    @SuppressWarnings("OptionalGetWithoutIsPresent")
     private EntityType<?> getEntityType() {
 
         if (this.type != null) {
@@ -175,9 +173,8 @@ public class EntityMenuEntry {
 
         List<EntityType<?>> types = ForgeRegistries.ENTITIES.getValues().stream()
                 .filter(type -> type.getClassification() != EntityClassification.MISC).collect(Collectors.toList());
-        Collections.shuffle(types);
 
-        return types.stream().findFirst().get();
+        return types.get((int) (types.size() * Math.random()));
     }
 
     public JsonElement serialize() {
