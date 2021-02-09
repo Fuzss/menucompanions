@@ -45,9 +45,9 @@ import java.util.stream.Stream;
 public class EntityMenuContainer implements IStateContainer {
 
     private final Minecraft mc;
-    private final MenuClientWorld world;
-    public final MenuParticleManager particleManager;
 
+    private MenuClientWorld world;
+    public MenuParticleManager particleManager;
     private ContainerState containerState = this.getDefaultState();
     private boolean setRotationAngles;
 
@@ -62,11 +62,15 @@ public class EntityMenuContainer implements IStateContainer {
     private boolean nameplate;
     private boolean particles;
 
-    public EntityMenuContainer(Minecraft mc, MenuClientWorld world) {
+    public EntityMenuContainer(Minecraft mc) {
 
         this.mc = mc;
+    }
+
+    public void setWorld(MenuClientWorld world) {
+
         this.world = world;
-        this.particleManager = new MenuParticleManager(mc, world);
+        this.particleManager = new MenuParticleManager(this.mc, world);
     }
 
     @Override

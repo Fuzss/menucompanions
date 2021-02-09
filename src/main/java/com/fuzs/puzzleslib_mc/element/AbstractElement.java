@@ -1,5 +1,6 @@
 package com.fuzs.puzzleslib_mc.element;
 
+import com.fuzs.puzzleslib_mc.PuzzlesLib;
 import com.fuzs.puzzleslib_mc.config.ConfigManager;
 import com.fuzs.puzzleslib_mc.element.registry.ElementRegistry;
 import com.fuzs.puzzleslib_mc.element.side.IClientElement;
@@ -33,8 +34,9 @@ public abstract class AbstractElement extends EventListener implements IConfigur
     private final List<EventStorage<? extends Event>> events = Lists.newArrayList();
     /**
      * is this element enabled (are events registered)
+     * 1 and 0 for enable / disable, -1 for force disable where reloading the config doesn't have any effect
      */
-    private boolean enabled = this.getDefaultState();
+    private int enabled = this.getDefaultState() ? 1 : 0;
 
     /**
      * @return name of this set in elements registry
@@ -179,7 +181,7 @@ public abstract class AbstractElement extends EventListener implements IConfigur
     @Override
     public final boolean isEnabled() {
 
-        return this.enabled;
+        return this.enabled == 1;
     }
 
     /**
@@ -195,13 +197,31 @@ public abstract class AbstractElement extends EventListener implements IConfigur
      * set {@link #enabled} state, reload when changed
      * @param enabled enabled
      */
-    protected void setEnabled(boolean enabled) {
+    private void setEnabled(boolean enabled) {
 
-        if (enabled != this.enabled) {
+        this.setEnabled(enabled ? 1 : 0);
+    }
+
+    /**
+     * set {@link #enabled} state, reload when changed
+     * @param enabled enabled as int
+     */
+    private void setEnabled(int enabled) {
+
+        if (this.enabled != -1 && this.enabled != enabled) {
 
             this.enabled = enabled;
             this.reload(false);
         }
+    }
+
+    /**
+     * something went wrong using this element, disable until game is restarted
+     */
+    protected void forceDisable() {
+
+        this.setEnabled(-1);
+        PuzzlesLib.LOGGER.warn("Detected issue in {} element: {}", this.getDisplayName(), "Disabling until game restart");
     }
 
     /**

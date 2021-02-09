@@ -50,7 +50,7 @@ interface IStateContainer {
 
     default ContainerState getDefaultState() {
 
-        return ContainerState.DISABLED;
+        return ContainerState.INVALID;
     }
 
     enum ContainerState {

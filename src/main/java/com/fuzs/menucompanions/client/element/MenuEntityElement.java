@@ -12,7 +12,6 @@ import com.fuzs.puzzleslib_mc.config.ConfigValueData;
 import com.fuzs.puzzleslib_mc.config.json.JsonConfigFileUtil;
 import com.fuzs.puzzleslib_mc.element.AbstractElement;
 import com.fuzs.puzzleslib_mc.element.side.IClientElement;
-import com.fuzs.puzzleslib_mc.util.PuzzlesLibUtil;
 import com.google.common.collect.Lists;
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.matrix.MatrixStack;
@@ -61,12 +60,12 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
     public final String jsonMobsName = "mobs.json";
     private final Minecraft mc = Minecraft.getInstance();
     private MenuClientWorld renderWorld;
-    private final EnumMap<MenuSide, EntityMenuContainer> sides = new EnumMap<>(MenuSide.class);
-    private Consumer<UnaryOperator<List<String>>> addToBlacklist = null;
+    private final EnumMap<MenuSide, EntityMenuContainer> menuSides = new EnumMap<>(MenuSide.class);
+    private Consumer<UnaryOperator<List<String>>> addToBlacklist;
 
     // config settings
     public int displayTime;
-    private int size;
+    private int entitySize;
     /**
      * 0: left side x offset
      * 1: left side y offset
@@ -75,11 +74,11 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
      * 4: button reload x offset
      * 5: button reload y offset
      */
-    private final int[] offsets = new int[6];
+    private final int[] buttonOffsets = new int[6];
     private boolean playAmbientSounds;
     private double soundVolume;
     private boolean hurtEntity;
-    private Set<EntityType<?>> blacklist;
+    private Set<EntityType<?>> entityBlacklist;
     private ReloadMode reloadMode;
 
     @Override
@@ -90,6 +89,11 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
 
     @Override
     public void setupClient() {
+
+        // create sides without world, has to be set later
+        Stream.of(MenuSide.values())
+                .filter(side -> side != MenuSide.BOTH)
+                .forEach(side -> this.menuSides.put(side, new EntityMenuContainer(this.mc)));
 
         this.addListener(this::onGuiInit);
         this.addListener(this::onGuiOpen);
@@ -126,7 +130,9 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
         JsonConfigFileUtil.load(jsonMobsName, MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
         if (this.createRenderWorld()) {
 
-            this.createSides();
+            this.menuSides.values().forEach(container -> container.setWorld(this.renderWorld));
+            // init empty tags as some entities such as piglins and minecarts depend on it
+            TagRegistryManager.fetchTags();
         }
     }
 
@@ -143,7 +149,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
         } catch (Exception e) {
 
             MenuCompanions.LOGGER.error("Unable to create rendering world: {}", e.getMessage());
-            this.setEnabled(false);
+            this.forceDisable();
 
             return false;
         }
@@ -151,35 +157,26 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
         return true;
     }
 
-    private void createSides() {
-
-        // init empty tags as some entities such as piglins and minecarts depend on it
-        TagRegistryManager.fetchTags();
-        Stream.of(MenuSide.values())
-                .filter(side -> side != MenuSide.BOTH)
-                .forEach(side -> this.sides.put(side, new EntityMenuContainer(this.mc, this.renderWorld)));
-    }
-
     @Override
     public void setupClientConfig(ForgeConfigSpec.Builder builder) {
 
         addToConfig(builder.comment("Time in seconds an entity will be shown for. Set to 0 to never change entities.").defineInRange("Display Time", 0, 0, Integer.MAX_VALUE), v -> this.displayTime = v);
-        addToConfig(builder.comment("Size of menu companions.").defineInRange("Size", 60, 0, Integer.MAX_VALUE), v -> this.size = v);
-        addToConfig(builder.comment("Offset on x-axis from original position on left side.").defineInRange("Left X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[0] = v);
-        addToConfig(builder.comment("Offset on y-axis from original position on left side.").defineInRange("Left Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[1] = v);
-        addToConfig(builder.comment("Offset on x-axis from original position on right side.").defineInRange("Right X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[2] = v);
-        addToConfig(builder.comment("Offset on y-axis from original position on right side.").defineInRange("Right Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[3] = v);
+        addToConfig(builder.comment("Size of menu companions.").defineInRange("Entity Size", 60, 0, Integer.MAX_VALUE), v -> this.entitySize = v);
+        addToConfig(builder.comment("Offset on x-axis from original position on left side.").defineInRange("Left X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[0] = v);
+        addToConfig(builder.comment("Offset on y-axis from original position on left side.").defineInRange("Left Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[1] = v);
+        addToConfig(builder.comment("Offset on x-axis from original position on right side.").defineInRange("Right X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[2] = v);
+        addToConfig(builder.comment("Offset on y-axis from original position on right side.").defineInRange("Right Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[3] = v);
         addToConfig(builder.comment("Play ambient sounds when clicking on menu mobs.").define("Play Sounds", true), v -> this.playAmbientSounds = v);
         addToConfig(builder.comment("Volume of ambient sounds.").defineInRange("Sound Volume", 0.5, 0.0, 1.0), v -> this.soundVolume = v);
         addToConfig(builder.comment("Hurt entity when clicked and there is no ambient sound to play.").define("Hurt Entity", true), v -> this.hurtEntity = v);
-        addToConfig(builder.comment("Blacklist to prevent certain entities form rendering. Problematic entities will be added automatically upon being detected.").define("Entity Blacklist", ConfigManager.get().getKeyList(EntityType.ENDER_DRAGON, EntityType.EVOKER_FANGS, EntityType.FALLING_BLOCK, EntityType.AREA_EFFECT_CLOUD, EntityType.ITEM, EntityType.FISHING_BOBBER)), v -> this.blacklist = v, v -> deserializeToSet(v, ForgeRegistries.ENTITIES));
+        addToConfig(builder.comment("Blacklist to prevent certain entities form rendering. Problematic entities will be added automatically upon being detected.").define("Entity Blacklist", ConfigManager.get().getKeyList(EntityType.ENDER_DRAGON, EntityType.EVOKER_FANGS, EntityType.FALLING_BLOCK, EntityType.AREA_EFFECT_CLOUD, EntityType.ITEM, EntityType.FISHING_BOBBER)), v -> this.entityBlacklist = v, v -> deserializeToSet(v, ForgeRegistries.ENTITIES));
         addToConfig(builder.comment("When to show reload button on main menu. By default requires the control key to be pressed.").defineEnum("Reload Button", ReloadMode.RIGHT_CONTROL), v -> this.reloadMode = v);
-        addToConfig(builder.comment("Reload button offset on x-axis from original position.").defineInRange("Reload X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[4] = v);
-        addToConfig(builder.comment("Reload button offset on y-axis from original position.").defineInRange("Reload Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[5] = v);
+        addToConfig(builder.comment("Reload button offset on x-axis from original position.").defineInRange("Reload X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[4] = v);
+        addToConfig(builder.comment("Reload button offset on y-axis from original position.").defineInRange("Reload Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[5] = v);
         addToConfig(builder.comment("Which side entities can be shown at.").defineEnum("Entity Side", MenuSide.BOTH), v -> {
 
-            PuzzlesLibUtil.acceptIfPresent(this.sides.get(MenuSide.LEFT), container -> container.setEnabled(v != MenuSide.RIGHT));
-            PuzzlesLibUtil.acceptIfPresent(this.sides.get(MenuSide.RIGHT), container -> container.setEnabled(v != MenuSide.LEFT));
+            this.menuSides.get(MenuSide.LEFT).setEnabled(v != MenuSide.RIGHT);
+            this.menuSides.get(MenuSide.RIGHT).setEnabled(v != MenuSide.LEFT);
         });
     }
 
@@ -196,13 +193,13 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
         Widget parentWidget = this.getReloadParentWidget(widgets);
         if (parentWidget != null) {
 
-            int posX = parentWidget.x + (this.reloadMode.isLeft() ? -24 + this.offsets[4] : parentWidget.getWidth() + 4 - this.offsets[4]);
-            int posY = parentWidget.y - this.offsets[5];
+            int posX = parentWidget.x + (this.reloadMode.isLeft() ? -24 + this.buttonOffsets[4] : parentWidget.getWidth() + 4 - this.buttonOffsets[4]);
+            int posY = parentWidget.y - this.buttonOffsets[5];
             addWidget.accept(new ImageButton(posX, posY, 20, 20, 0, 0, 20, RELOAD_TEXTURES, 32, 64, button -> {
 
                 JsonConfigFileUtil.load(this.jsonMobsName, MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
                 MenuCompanions.LOGGER.info("Reloaded config file at {}", this.jsonMobsName);
-                this.sides.values().forEach(EntityMenuContainer::invalidate);
+                this.menuSides.values().forEach(EntityMenuContainer::invalidate);
             }, new TranslationTextComponent("narrator.button.reload")) {
 
                 @Override
@@ -256,7 +253,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
 
         if (evt.getGui() instanceof MainMenuScreen) {
 
-            this.sides.values().forEach(EntityMenuContainer::invalidate);
+            this.menuSides.values().forEach(EntityMenuContainer::invalidate);
         }
     }
 
@@ -264,13 +261,13 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
 
         if (evt.getGui() instanceof MainMenuScreen) {
 
-            this.sides.forEach((side, container) -> {
+            this.menuSides.forEach((side, container) -> {
 
                 int sideIndex = side == MenuSide.RIGHT ? 2 : 0;
-                int xOffset = (evt.getGui().width / 2 - 96) / 2 + this.offsets[sideIndex];
+                int xOffset = (evt.getGui().width / 2 - 96) / 2 + this.buttonOffsets[sideIndex];
                 int posX = sideIndex == 0 ? xOffset : evt.getGui().width - xOffset;
-                int posY = evt.getGui().height / 4 + 116 - this.offsets[sideIndex + 1];
-                container.render(posX, posY, this.size / 2.0F, -evt.getMouseX(), -evt.getMouseY(), evt.getRenderPartialTicks());
+                int posY = evt.getGui().height / 4 + 116 - this.buttonOffsets[sideIndex + 1];
+                container.render(posX, posY, this.entitySize / 2.0F, -evt.getMouseX(), -evt.getMouseY(), evt.getRenderPartialTicks());
             });
         }
     }
@@ -290,25 +287,25 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
 
     private boolean playSoundLeftSide(int width, int height, double mouseX, double mouseY) {
 
-        int posX = (width / 2 - 96) / 2 - this.size / 2 + this.offsets[0];
-        int posY = height / 4 + 48 + 80 - this.size * 4 / 3 - this.offsets[1];
+        int posX = (width / 2 - 96) / 2 - this.entitySize / 2 + this.buttonOffsets[0];
+        int posY = height / 4 + 48 + 80 - this.entitySize * 4 / 3 - this.buttonOffsets[1];
 
         return this.playSoundAtSide(MenuSide.LEFT, posX, posY, mouseX, mouseY);
     }
 
     private boolean playSoundRightSide(int width, int height, double mouseX, double mouseY) {
 
-        int posX = width - ((width / 2 - 96) / 2 + this.size / 2 + this.offsets[2]);
-        int posY = height / 4 + 48 + 80 - this.size * 4 / 3 - this.offsets[3];
+        int posX = width - ((width / 2 - 96) / 2 + this.entitySize / 2 + this.buttonOffsets[2]);
+        int posY = height / 4 + 48 + 80 - this.entitySize * 4 / 3 - this.buttonOffsets[3];
 
         return this.playSoundAtSide(MenuSide.RIGHT, posX, posY, mouseX, mouseY);
     }
 
     private boolean playSoundAtSide(MenuSide side, int posX, int posY, double mouseX, double mouseY) {
 
-        if (isPointInRegion(posX, posY, this.size, this.size * 4 / 3, mouseX, mouseY)) {
+        if (isPointInRegion(posX, posY, this.entitySize, this.entitySize * 4 / 3, mouseX, mouseY)) {
 
-            this.sides.get(side).playLivingSound(this.mc.getSoundHandler(), (float) this.soundVolume, this.hurtEntity);
+            this.menuSides.get(side).playLivingSound(this.mc.getSoundHandler(), (float) this.soundVolume, this.hurtEntity);
 
             return true;
         }
@@ -325,10 +322,10 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
 
         if (evt.phase != TickEvent.Phase.END && this.mc.currentScreen instanceof MainMenuScreen) {
 
-            this.sides.entrySet().stream()
+            this.menuSides.entrySet().stream()
                     .filter(entry -> entry.getValue().isInvalid())
                     .forEach(entry -> MenuEntityElement.this.setMenuSide(entry.getKey(), entry.getValue()));
-            this.sides.values().forEach(EntityMenuContainer::tick);
+            this.menuSides.values().forEach(EntityMenuContainer::tick);
         }
     }
 
@@ -372,7 +369,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
 
     public boolean isAllowed(EntityType<?> type) {
 
-        return this.blacklist == null || !this.blacklist.contains(type);
+        return this.entityBlacklist == null || !this.entityBlacklist.contains(type);
     }
 
     public void addToBlacklist(String type) {
