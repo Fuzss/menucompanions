@@ -13,12 +13,26 @@ import java.util.function.Consumer;
 /**
  * handles loading and saving of json config files
  */
+@SuppressWarnings("ResultOfMethodCallIgnored")
 public class JsonConfigFileUtil {
 
     /**
      * gson builder instance, no html escaping to allow "<" and ">"
      */
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+
+    /**
+     * make a new directory for this mod in the main config directory
+     * @param modId directory name
+     */
+    public static void mkdir(String modId) {
+
+        File modDir = getPath(modId);
+        if (!modDir.exists()) {
+
+            modDir.mkdirs();
+        }
+    }
 
     /**
      * load a json file in the main config directory, create a file if absent
@@ -28,7 +42,7 @@ public class JsonConfigFileUtil {
      */
     public static void load(String jsonName, BiConsumer<String, File> serializer, Consumer<FileReader> deserializer) {
 
-        File jsonFile = getFilePath(jsonName);
+        File jsonFile = getPath(jsonName);
         load(jsonName, jsonFile, serializer, deserializer);
     }
 
@@ -41,7 +55,7 @@ public class JsonConfigFileUtil {
      */
     public static void load(String jsonName, String modId, BiConsumer<String, File> serializer, Consumer<FileReader> deserializer) {
 
-        File jsonFile = getFolderPath(jsonName, modId);
+        File jsonFile = getPathInDir(jsonName, modId);
         load(jsonName, jsonFile, serializer, deserializer);
     }
 
@@ -68,7 +82,7 @@ public class JsonConfigFileUtil {
 
         if (!jsonFile.exists()) {
 
-            jsonFile.getParentFile().mkdir();
+            jsonFile.getParentFile().mkdirs();
             serializer.accept(jsonName, jsonFile);
         }
     }
@@ -143,7 +157,7 @@ public class JsonConfigFileUtil {
      * @param jsonName file to get
      * @return file
      */
-    public static File getFilePath(String jsonName) {
+    public static File getPath(String jsonName) {
 
         return new File(FMLPaths.CONFIGDIR.get().toFile(), jsonName);
     }
@@ -154,7 +168,7 @@ public class JsonConfigFileUtil {
      * @param modId config directory name
      * @return file
      */
-    public static File getFolderPath(String jsonName, String modId) {
+    public static File getPathInDir(String jsonName, String modId) {
 
         return new File(FMLPaths.CONFIGDIR.get().toFile(), modId + File.separator + jsonName);
     }

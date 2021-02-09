@@ -8,24 +8,13 @@ import com.fuzs.menucompanions.mixin.client.accessor.IEntityAccessor;
 import com.fuzs.menucompanions.mixin.client.accessor.IPlayerEntityAccessor;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.GameProfileRepository;
-import com.mojang.authlib.minecraft.MinecraftSessionService;
-import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.Pose;
 import net.minecraft.entity.player.PlayerModelPart;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.management.PlayerProfileCache;
-import net.minecraft.tileentity.SkullTileEntity;
-import net.minecraft.util.StringUtils;
 
 import javax.annotation.Nullable;
-import java.io.File;
-import java.util.UUID;
 
 public class PlayerMenuEntry extends EntityMenuEntry {
 
@@ -44,12 +33,12 @@ public class PlayerMenuEntry extends EntityMenuEntry {
     @Nullable
     public Entity create(MenuClientWorld worldIn) {
 
-        CreateEntityUtil.setGameProfile(getGameProfile(this.profile));
+        CreateEntityUtil.setGameProfile(this.profile);
         return CreateEntityUtil.loadEntity(EntityType.PLAYER, this.compound, worldIn, entity -> {
 
             entity.setOnGround(this.readProperty(PropertyFlags.ON_GROUND));
             ((IEntityAccessor) entity).setInWater(this.readProperty(PropertyFlags.IN_WATER));
-            CreateEntityUtil.readLivingAdditional(entity, this.compound);
+            CreateEntityUtil.readMobData(entity, this.compound);
             entity.getDataManager().set(IPlayerEntityAccessor.getPlayerModelFlag(), this.modelParts);
             if (this.crouching) {
 
@@ -85,34 +74,6 @@ public class PlayerMenuEntry extends EntityMenuEntry {
         IEntrySerializer.serializeEnumProperties(jsonobject, PlayerModelPart.class, this.modelParts, PlayerModelPart::getPartName, PlayerModelPart::getPartMask);
 
         return jsonobject;
-    }
-
-    private static GameProfile getGameProfile(String profile) {
-
-        if (StringUtils.isNullOrEmpty(profile)) {
-
-            return Minecraft.getInstance().getSession().getProfile();
-        }
-
-        return updateGameProfile(new GameProfile(null, profile));
-    }
-
-    private static GameProfile updateGameProfile(GameProfile input) {
-
-        GameProfile gameprofile = SkullTileEntity.updateGameProfile(input);
-        if (gameprofile == input) {
-
-            YggdrasilAuthenticationService yggdrasilauthenticationservice = new YggdrasilAuthenticationService(Minecraft.getInstance().getProxy(), UUID.randomUUID().toString());
-            MinecraftSessionService minecraftsessionservice = yggdrasilauthenticationservice.createMinecraftSessionService();
-            GameProfileRepository gameprofilerepository = yggdrasilauthenticationservice.createProfileRepository();
-            PlayerProfileCache playerprofilecache = new PlayerProfileCache(gameprofilerepository, new File(Minecraft.getInstance().gameDir, MinecraftServer.USER_CACHE_FILE.getName()));
-            SkullTileEntity.setProfileCache(playerprofilecache);
-            SkullTileEntity.setSessionService(minecraftsessionservice);
-
-            gameprofile = SkullTileEntity.updateGameProfile(input);
-        }
-
-        return gameprofile;
     }
 
 }

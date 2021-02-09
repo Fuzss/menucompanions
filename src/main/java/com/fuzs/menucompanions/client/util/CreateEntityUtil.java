@@ -1,15 +1,29 @@
 package com.fuzs.menucompanions.client.util;
 
 import com.fuzs.menucompanions.MenuCompanions;
-import com.fuzs.menucompanions.client.entity.player.MenuClientPlayerEntity;
 import com.fuzs.menucompanions.client.element.MenuEntityElement;
+import com.fuzs.menucompanions.client.entity.player.MenuClientPlayerEntity;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
 import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.GameProfileRepository;
+import com.mojang.authlib.minecraft.MinecraftSessionService;
+import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
+import net.minecraft.block.BlockState;
+import net.minecraft.client.Minecraft;
 import net.minecraft.entity.*;
+import net.minecraft.entity.monster.EndermanEntity;
+import net.minecraft.entity.monster.ZombifiedPiglinEntity;
+import net.minecraft.entity.passive.WolfEntity;
 import net.minecraft.inventory.EquipmentSlotType;
+import net.minecraft.item.DyeColor;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
+import net.minecraft.nbt.NBTUtil;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.management.PlayerProfileCache;
+import net.minecraft.tileentity.SkullTileEntity;
+import net.minecraft.util.StringUtils;
 import net.minecraft.util.Util;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.DifficultyInstance;
@@ -17,8 +31,10 @@ import net.minecraft.world.IServerWorld;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
+import java.io.File;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -83,14 +99,20 @@ public class CreateEntityUtil {
 
             try {
 
-                entity.read(compound);
+                if (entity instanceof IAngerable) {
+
+                    // world is casted to ServerWorld in IAngerable, so we need to handle those mobs manually
+                    readAngerableAdditional(entity, compound);
+                } else {
+
+                    entity.read(compound);
+                }
             } catch (Exception e) {
 
                 // just enable held items and armor items to show at least in case nothing else works
-                // world is casted to ServerWorld in IAngerable, but that's fine as the problematic method is always called after everything else has been read
-                if (entity instanceof MobEntity && !(entity instanceof IAngerable)) {
+                if (entity instanceof MobEntity) {
 
-                    readLivingAdditional(entity, compound);
+                    readMobData(entity, compound);
                 }
             }
         }, () -> {
@@ -112,9 +134,37 @@ public class CreateEntityUtil {
         return type.create(worldIn);
     }
 
-    public static void setGameProfile(GameProfile input) {
+    public static void setGameProfile(String profile) {
 
-        gameProfile = input;
+        gameProfile = getGameProfile(profile);
+    }
+
+    private static GameProfile getGameProfile(String profile) {
+
+        if (StringUtils.isNullOrEmpty(profile)) {
+
+            return Minecraft.getInstance().getSession().getProfile();
+        }
+
+        return updateGameProfile(new GameProfile(null, profile));
+    }
+
+    private static GameProfile updateGameProfile(GameProfile input) {
+
+        GameProfile gameprofile = SkullTileEntity.updateGameProfile(input);
+        if (gameprofile == input) {
+
+            YggdrasilAuthenticationService yggdrasilauthenticationservice = new YggdrasilAuthenticationService(Minecraft.getInstance().getProxy(), UUID.randomUUID().toString());
+            MinecraftSessionService minecraftsessionservice = yggdrasilauthenticationservice.createMinecraftSessionService();
+            GameProfileRepository gameprofilerepository = yggdrasilauthenticationservice.createProfileRepository();
+            PlayerProfileCache playerprofilecache = new PlayerProfileCache(gameprofilerepository, new File(Minecraft.getInstance().gameDir, MinecraftServer.USER_CACHE_FILE.getName()));
+            SkullTileEntity.setProfileCache(playerprofilecache);
+            SkullTileEntity.setSessionService(minecraftsessionservice);
+
+            gameprofile = SkullTileEntity.updateGameProfile(input);
+        }
+
+        return gameprofile;
     }
 
     public static void onInitialSpawn(Entity entity, IServerWorld worldIn, boolean noNbt) {
@@ -141,7 +191,27 @@ public class CreateEntityUtil {
         }
     }
 
-    public static void readLivingAdditional(Entity entity, CompoundNBT compound) {
+    private static void readAngerableAdditional(Entity entity, CompoundNBT compound) {
+
+        ((IAngerable) entity).setAngerTime(compound.getInt("AngerTime"));
+        if (entity instanceof MobEntity) {
+
+            readMobData(entity, compound);
+        }
+
+        if (entity instanceof EndermanEntity) {
+
+            readEndermanData((EndermanEntity) entity, compound);
+        } else if (entity instanceof ZombifiedPiglinEntity) {
+
+            ((ZombifiedPiglinEntity) entity).setChild(compound.getBoolean("IsBaby"));
+        } else if (entity instanceof WolfEntity) {
+
+            readWolfData((WolfEntity) entity, compound);
+        }
+    }
+
+    public static void readMobData(Entity entity, CompoundNBT compound) {
 
         if (compound.contains("ArmorItems", 9)) {
 
@@ -158,6 +228,34 @@ public class CreateEntityUtil {
                     .filter(slot -> slot.getSlotType() == EquipmentSlotType.Group.HAND)
                     .forEach(slot -> entity.setItemStackToSlot(slot, ItemStack.read(listnbt.getCompound(slot.getIndex()))));
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void readEndermanData(EndermanEntity entity, CompoundNBT compound) {
+
+        BlockState blockstate = null;
+        if (compound.contains("carriedBlockState", 10)) {
+
+            blockstate = NBTUtil.readBlockState(compound.getCompound("carriedBlockState"));
+            if (blockstate.isAir()) {
+
+                blockstate = null;
+            }
+        }
+
+        entity.setHeldBlockState(blockstate);
+    }
+
+    private static void readWolfData(WolfEntity entity, CompoundNBT compound) {
+
+        if (compound.contains("CollarColor", 99)) {
+
+            entity.setCollarColor(DyeColor.byId(compound.getInt("CollarColor")));
+        }
+
+        entity.setTamed(compound.hasUniqueId("Owner") || !compound.getString("Owner").isEmpty());
+        entity.func_233687_w_(compound.getBoolean("Sitting"));
+        entity.setSleeping(entity.isSitting());
     }
 
 }

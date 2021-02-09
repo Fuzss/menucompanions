@@ -7,9 +7,9 @@ import com.fuzs.menucompanions.client.storage.EntityMenuEntry;
 import com.fuzs.menucompanions.client.storage.MenuEntityProvider;
 import com.fuzs.menucompanions.client.util.ReloadMode;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
-import com.fuzs.menucompanions.config.JSONConfigUtil;
 import com.fuzs.puzzleslib_mc.config.ConfigManager;
 import com.fuzs.puzzleslib_mc.config.ConfigValueData;
+import com.fuzs.puzzleslib_mc.config.json.JsonConfigFileUtil;
 import com.fuzs.puzzleslib_mc.element.AbstractElement;
 import com.fuzs.puzzleslib_mc.element.side.IClientElement;
 import com.fuzs.puzzleslib_mc.util.PuzzlesLibUtil;
@@ -123,7 +123,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
                 .map(data -> (ConfigValueData<ForgeConfigSpec.ConfigValue<List<String>>, List<String>, ?>) data)
                 .ifPresent(data -> this.addToBlacklist = data::modifyConfigValue);
 
-        JSONConfigUtil.load(jsonMobsName, MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
+        JsonConfigFileUtil.load(jsonMobsName, MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
         if (this.createRenderWorld()) {
 
             this.createSides();
@@ -163,7 +163,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
     @Override
     public void setupClientConfig(ForgeConfigSpec.Builder builder) {
 
-        addToConfig(builder.comment("Time in seconds an entity will be shown for. Set to 0 to never change entities.").defineInRange("Display Time", 10, 0, Integer.MAX_VALUE), v -> this.displayTime = v);
+        addToConfig(builder.comment("Time in seconds an entity will be shown for. Set to 0 to never change entities.").defineInRange("Display Time", 0, 0, Integer.MAX_VALUE), v -> this.displayTime = v);
         addToConfig(builder.comment("Size of menu companions.").defineInRange("Size", 60, 0, Integer.MAX_VALUE), v -> this.size = v);
         addToConfig(builder.comment("Offset on x-axis from original position on left side.").defineInRange("Left X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[0] = v);
         addToConfig(builder.comment("Offset on y-axis from original position on left side.").defineInRange("Left Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.offsets[1] = v);
@@ -200,7 +200,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
             int posY = parentWidget.y - this.offsets[5];
             addWidget.accept(new ImageButton(posX, posY, 20, 20, 0, 0, 20, RELOAD_TEXTURES, 32, 64, button -> {
 
-                JSONConfigUtil.load(this.jsonMobsName, MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
+                JsonConfigFileUtil.load(this.jsonMobsName, MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
                 MenuCompanions.LOGGER.info("Reloaded config file at {}", this.jsonMobsName);
                 this.sides.values().forEach(EntityMenuContainer::invalidate);
             }, new TranslationTextComponent("narrator.button.reload")) {

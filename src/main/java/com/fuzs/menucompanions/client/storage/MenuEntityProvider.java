@@ -1,7 +1,7 @@
 package com.fuzs.menucompanions.client.storage;
 
 import com.fuzs.menucompanions.client.element.MenuEntityElement;
-import com.fuzs.menucompanions.config.JSONConfigUtil;
+import com.fuzs.puzzleslib_mc.config.json.JsonConfigFileUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -89,13 +89,13 @@ public class MenuEntityProvider {
         jsonobject.addProperty("file_format", FILE_FORMAT);
         jsonarray.add(jsonobject);
         DEFAULT_MENU_ENTRIES.forEach(entry -> jsonarray.add(entry.serialize()));
-        JSONConfigUtil.saveToFile(jsonName, jsonFile, jsonarray);
+        JsonConfigFileUtil.saveToFile(jsonName, jsonFile, jsonarray);
     }
 
     public static void deserialize(FileReader reader) {
 
         MENU_ENTRIES.clear();
-        JsonElement[] elements = JSONConfigUtil.GSON.fromJson(reader, JsonElement[].class);
+        JsonElement[] elements = JsonConfigFileUtil.GSON.fromJson(reader, JsonElement[].class);
         int version = 0;
         for (JsonElement jsonelement : elements) {
 

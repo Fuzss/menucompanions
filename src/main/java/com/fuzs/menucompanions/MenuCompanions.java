@@ -18,8 +18,7 @@ public class MenuCompanions extends PuzzlesLib {
 
         super();
         MenuCompanionsElements.setup(MODID);
-        ConfigManager.builder().moveToFolder(MODID);
-        ConfigManager.get().load();
+        ConfigManager.get().load(MODID);
         this.setClientSideOnly();
     }
 

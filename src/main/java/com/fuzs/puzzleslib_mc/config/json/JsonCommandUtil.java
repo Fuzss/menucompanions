@@ -125,7 +125,7 @@ public class JsonCommandUtil {
      */
     private static IFormattableTextComponent getClickableComponent(String jsonName, @Nullable String modId) {
 
-        File filePath = modId != null ? JsonConfigFileUtil.getFolderPath(jsonName, modId) : JsonConfigFileUtil.getFilePath(jsonName);
+        File filePath = modId != null ? JsonConfigFileUtil.getPathInDir(jsonName, modId) : JsonConfigFileUtil.getPath(jsonName);
 
         return new StringTextComponent(jsonName).mergeStyle(TextFormatting.UNDERLINE)
                 .modifyStyle(style -> style.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, filePath.getAbsolutePath())));
