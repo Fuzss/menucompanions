@@ -1,4 +1,4 @@
-package com.fuzs.menucompanions.client.storage;
+package com.fuzs.menucompanions.client.storage.entry;
 
 import com.fuzs.menucompanions.client.element.MenuEntityElement;
 import com.fuzs.menucompanions.client.util.CreateEntityUtil;

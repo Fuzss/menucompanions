@@ -2,6 +2,9 @@ package com.fuzs.menucompanions.client.storage;
 
 import com.fuzs.menucompanions.MenuCompanions;
 import com.fuzs.menucompanions.client.element.MenuEntityElement;
+import com.fuzs.menucompanions.client.storage.entry.EntityMenuEntry;
+import com.fuzs.menucompanions.client.storage.entry.PlayerMenuEntry;
+import com.fuzs.menucompanions.client.storage.entry.PropertyFlag;
 import com.fuzs.menucompanions.client.util.IEntrySerializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;

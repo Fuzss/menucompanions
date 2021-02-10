@@ -97,7 +97,8 @@ public class JsonConfigFileUtil {
     private static void createAllIfAbsent(File jsonDir, Consumer<File> serializer, List<File> files) {
 
         mkdirs(jsonDir);
-        getAllFilesInDir(jsonDir, SEARCH_LAYERS, files, name -> name.endsWith(".json"));
+        // temp fix for people upgrading from an old version
+        getAllFilesInDir(jsonDir, SEARCH_LAYERS, files, name -> name.endsWith(".json") && !name.equals("mobs.json"));
         if (files.isEmpty()) {
 
             serializer.accept(jsonDir);

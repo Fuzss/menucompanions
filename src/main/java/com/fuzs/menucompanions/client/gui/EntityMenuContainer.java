@@ -3,7 +3,7 @@ package com.fuzs.menucompanions.client.gui;
 import com.fuzs.menucompanions.MenuCompanions;
 import com.fuzs.menucompanions.client.element.MenuEntityElement;
 import com.fuzs.menucompanions.client.particle.MenuParticleManager;
-import com.fuzs.menucompanions.client.storage.EntityMenuEntry;
+import com.fuzs.menucompanions.client.storage.entry.EntityMenuEntry;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
 import com.fuzs.menucompanions.mixin.client.accessor.IActiveRenderInfoAccessor;
 import com.fuzs.menucompanions.mixin.client.accessor.ILivingEntityAccessor;
@@ -256,7 +256,8 @@ public class EntityMenuContainer implements IStateContainer {
                     matrixstack.push();
                     float downscale = 1.0F / this.scale;
                     matrixstack.scale(downscale, downscale, downscale);
-                    renderName(matrixstack, irendertypebuffer, packedLightIn, entity, (entity.getHeight() + 0.5F) * this.scale);
+                    Consumer<Entity> render = safeEntity -> renderName(matrixstack, irendertypebuffer, packedLightIn, safeEntity, (safeEntity.getHeight() + 0.5F) * this.scale);
+                    PuzzlesLibUtil.runOrElse(entity, render, safeEntity -> this.nameplate = false);
                     matrixstack.pop();
                 }
             }, this::setInvalid);
@@ -430,12 +431,12 @@ public class EntityMenuContainer implements IStateContainer {
 
         matrixstack.push();
         matrixstack.translate(posX, posY, posZ);
-        EntityRendererManager entityrenderermanager = Minecraft.getInstance().getRenderManager();
-        entityrenderermanager.setRenderShadow(false);
+        EntityRendererManager rendererManager = Minecraft.getInstance().getRenderManager();
+        rendererManager.setRenderShadow(false);
         IRenderTypeBuffer.Impl irendertypebuffer = Minecraft.getInstance().getRenderTypeBuffers().getBufferSource();
         RenderSystem.runAsFancy(() -> {
 
-            Consumer<Entity> render = safeEntity -> entityrenderermanager.renderEntityStatic(entity, 0.0, 0.0, 0.0, 0.0F, partialTicks, matrixstack, irendertypebuffer, 15728880);
+            Consumer<Entity> render = safeEntity -> rendererManager.renderEntityStatic(safeEntity, 0.0, 0.0, 0.0, 0.0F, partialTicks, matrixstack, irendertypebuffer, 15728880);
             Consumer<Entity> orElse = safeEntity -> {
 
                 MenuEntityElement.get().addToBlacklist(safeEntity.getType());
@@ -447,7 +448,7 @@ public class EntityMenuContainer implements IStateContainer {
         });
 
         irendertypebuffer.finish();
-        entityrenderermanager.setRenderShadow(true);
+        rendererManager.setRenderShadow(true);
         matrixstack.pop();
     }
 

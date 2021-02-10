@@ -1,6 +1,7 @@
 package com.fuzs.menucompanions.client.storage;
 
 import com.fuzs.menucompanions.client.element.MenuEntityElement;
+import com.fuzs.menucompanions.client.storage.entry.EntityMenuEntry;
 import com.fuzs.puzzleslib_mc.config.json.JsonConfigFileUtil;
 import com.fuzs.puzzleslib_mc.util.PuzzlesLibUtil;
 import com.google.common.collect.Lists;
@@ -86,14 +87,16 @@ public class MenuEntityProvider {
         }
     }
 
-    public static void deserialize(FileReader reader) {
+    public static void deserialize(FileReader reader) throws NullPointerException {
 
         JsonElement jsonelement = JsonConfigFileUtil.GSON.fromJson(reader, JsonElement.class);
         EntityMenuEntry deserialize = MenuEntryBuilder.deserialize(jsonelement);
-        if (deserialize != null) {
+        if (deserialize == null) {
 
-            MENU_ENTRIES.add(deserialize);
+            throw new NullPointerException("Couldn't deserialize file");
         }
+
+        MENU_ENTRIES.add(deserialize);
     }
 
     public static void clear() {
