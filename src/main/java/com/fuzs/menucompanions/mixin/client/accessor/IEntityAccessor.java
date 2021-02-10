@@ -12,11 +12,4 @@ public interface IEntityAccessor {
     @Accessor
     void setInWater(boolean inWater);
 
-    @SuppressWarnings("unused")
-    @Invoker("func_233573_b_")
-    static ITextComponent unifyStyle(ITextComponent itextcomponent) {
-
-        throw new IllegalStateException();
-    }
-
 }

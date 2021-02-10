@@ -8,18 +8,12 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.GameProfileRepository;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
-import net.minecraft.block.BlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.*;
-import net.minecraft.entity.monster.EndermanEntity;
-import net.minecraft.entity.monster.ZombifiedPiglinEntity;
-import net.minecraft.entity.passive.WolfEntity;
 import net.minecraft.inventory.EquipmentSlotType;
-import net.minecraft.item.DyeColor;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
-import net.minecraft.nbt.NBTUtil;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.PlayerProfileCache;
 import net.minecraft.tileentity.SkullTileEntity;
@@ -27,7 +21,7 @@ import net.minecraft.util.StringUtils;
 import net.minecraft.util.Util;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.DifficultyInstance;
-import net.minecraft.world.IServerWorld;
+import net.minecraft.world.IWorld;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
@@ -99,14 +93,7 @@ public class CreateEntityUtil {
 
             try {
 
-                if (entity instanceof IAngerable) {
-
-                    // world is casted to ServerWorld in IAngerable, so we need to handle those mobs manually
-                    readAngerableAdditional(entity, compound);
-                } else {
-
-                    entity.read(compound);
-                }
+                entity.read(compound);
             } catch (Exception e) {
 
                 // just enable held items and armor items to show at least in case nothing else works
@@ -167,7 +154,7 @@ public class CreateEntityUtil {
         return gameprofile;
     }
 
-    public static void onInitialSpawn(Entity entity, IServerWorld worldIn, boolean noNbt) {
+    public static void onInitialSpawn(Entity entity, IWorld worldIn, boolean noNbt) {
 
         // prevents crash in sprite renderers
         entity.ticksExisted = 2;
@@ -182,32 +169,12 @@ public class CreateEntityUtil {
                 ((MobEntity) entity).onInitialSpawn(worldIn, difficulty, SpawnReason.COMMAND, null, null);
                 if (entity instanceof AgeableEntity && ((AgeableEntity) entity).getRNG().nextFloat() <= 0.05F) {
 
-                    ((AgeableEntity) entity).setChild(true);
+                    ((AgeableEntity) entity).setGrowingAge(-24000);
                 }
             } catch (Exception ignored) {
 
                 // just ignore this as it's not important and doesn't fail too often
             }
-        }
-    }
-
-    private static void readAngerableAdditional(Entity entity, CompoundNBT compound) {
-
-        ((IAngerable) entity).setAngerTime(compound.getInt("AngerTime"));
-        if (entity instanceof MobEntity) {
-
-            readMobData(entity, compound);
-        }
-
-        if (entity instanceof EndermanEntity) {
-
-            readEndermanData((EndermanEntity) entity, compound);
-        } else if (entity instanceof ZombifiedPiglinEntity) {
-
-            ((ZombifiedPiglinEntity) entity).setChild(compound.getBoolean("IsBaby"));
-        } else if (entity instanceof WolfEntity) {
-
-            readWolfData((WolfEntity) entity, compound);
         }
     }
 
@@ -228,34 +195,6 @@ public class CreateEntityUtil {
                     .filter(slot -> slot.getSlotType() == EquipmentSlotType.Group.HAND)
                     .forEach(slot -> entity.setItemStackToSlot(slot, ItemStack.read(listnbt.getCompound(slot.getIndex()))));
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    private static void readEndermanData(EndermanEntity entity, CompoundNBT compound) {
-
-        BlockState blockstate = null;
-        if (compound.contains("carriedBlockState", 10)) {
-
-            blockstate = NBTUtil.readBlockState(compound.getCompound("carriedBlockState"));
-            if (blockstate.isAir()) {
-
-                blockstate = null;
-            }
-        }
-
-        entity.setHeldBlockState(blockstate);
-    }
-
-    private static void readWolfData(WolfEntity entity, CompoundNBT compound) {
-
-        if (compound.contains("CollarColor", 99)) {
-
-            entity.setCollarColor(DyeColor.byId(compound.getInt("CollarColor")));
-        }
-
-        entity.setTamed(compound.hasUniqueId("Owner") || !compound.getString("Owner").isEmpty());
-        entity.func_233687_w_(compound.getBoolean("Sitting"));
-        entity.setSleeping(entity.isSitting());
     }
 
 }

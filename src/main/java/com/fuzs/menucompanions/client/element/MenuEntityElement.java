@@ -14,26 +14,22 @@ import com.fuzs.puzzleslib_mc.element.AbstractElement;
 import com.fuzs.puzzleslib_mc.element.side.IClientElement;
 import com.google.common.collect.Lists;
 import com.mojang.authlib.GameProfile;
-import com.mojang.blaze3d.matrix.MatrixStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.MainMenuScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.Widget;
 import net.minecraft.client.gui.widget.button.ImageButton;
 import net.minecraft.client.network.play.ClientPlayNetHandler;
-import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.PacketDirection;
-import net.minecraft.tags.TagRegistryManager;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.registry.DynamicRegistries;
-import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
-import net.minecraft.world.Difficulty;
-import net.minecraft.world.DimensionType;
-import net.minecraft.world.World;
+import net.minecraft.world.GameType;
+import net.minecraft.world.WorldSettings;
+import net.minecraft.world.WorldType;
+import net.minecraft.world.dimension.DimensionType;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderNameplateEvent;
@@ -44,7 +40,6 @@ import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.registries.ForgeRegistries;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.EnumMap;
 import java.util.List;
@@ -130,8 +125,6 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
         if (this.createRenderWorld()) {
 
             this.menuSides.values().forEach(container -> container.setWorld(this.renderWorld));
-            // init empty tags as some entities such as piglins and minecarts depend on it
-            TagRegistryManager.fetchTags();
         }
     }
 
@@ -142,9 +135,8 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
             GameProfile profileIn = this.mc.getSession().getProfile();
             @SuppressWarnings("ConstantConditions")
             ClientPlayNetHandler clientPlayNetHandler = new ClientPlayNetHandler(this.mc, null,  new NetworkManager(PacketDirection.CLIENTBOUND), profileIn);
-            ClientWorld.ClientWorldInfo worldInfo = new ClientWorld.ClientWorldInfo(Difficulty.HARD, false, false);
-            DimensionType dimensionType = DynamicRegistries.func_239770_b_().func_230520_a_().getOrThrow(DimensionType.THE_NETHER);
-            this.renderWorld = new MenuClientWorld(clientPlayNetHandler, worldInfo, World.THE_NETHER, dimensionType, this.mc::getProfiler, this.mc.worldRenderer);
+            WorldSettings worldSettings = new WorldSettings(0L, GameType.SURVIVAL, false, false, WorldType.DEFAULT);
+            this.renderWorld = new MenuClientWorld(clientPlayNetHandler, worldSettings, DimensionType.THE_NETHER, this.mc.getProfiler(), this.mc.worldRenderer);
         } catch (Exception e) {
 
             MenuCompanions.LOGGER.error("Unable to create rendering world: {}", e.getMessage());
@@ -199,13 +191,13 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
                 JsonConfigFileUtil.getAllAndLoad(MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize, MenuEntityProvider::clear);
                 MenuCompanions.LOGGER.info("Reloaded config files at {}", MenuCompanions.MODID);
                 this.menuSides.values().forEach(EntityMenuContainer::setUpdateRequired);
-            }, new TranslationTextComponent("narrator.button.reload")) {
+            }, new TranslationTextComponent("narrator.button.reload").getUnformattedComponentText()) {
 
                 @Override
-                public void render(@Nonnull MatrixStack matrixStack, int mouseX, int mouseY, float partialTicks) {
+                public void render(int mouseX, int mouseY, float partialTicks) {
 
                     this.visible = MenuEntityElement.this.reloadMode.requiresControl() && Screen.hasControlDown() || MenuEntityElement.this.reloadMode.isAlways();
-                    super.render(matrixStack, mouseX, mouseY, partialTicks);
+                    super.render(mouseX, mouseY, partialTicks);
                 }
 
             });
@@ -235,13 +227,10 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
 
         for (Widget widget : widgets) {
 
-            ITextComponent message = widget.getMessage();
-            if (message instanceof TranslationTextComponent) {
+            String message = widget.getMessage();
+            if (new TranslationTextComponent(key).getFormattedText().equals(message)) {
 
-                if (((TranslationTextComponent) message).getKey().equals(key)) {
-
-                    return widget;
-                }
+                return widget;
             }
         }
         

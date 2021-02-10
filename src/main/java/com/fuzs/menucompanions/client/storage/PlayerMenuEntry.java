@@ -10,7 +10,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
-import net.minecraft.entity.Pose;
 import net.minecraft.entity.player.PlayerModelPart;
 import net.minecraft.nbt.CompoundNBT;
 
@@ -34,11 +33,11 @@ public class PlayerMenuEntry extends EntityMenuEntry {
         CreateEntityUtil.setGameProfile(this.profile);
         return CreateEntityUtil.loadEntity(EntityType.PLAYER, this.compound, worldIn, entity -> {
 
-            entity.setOnGround(PropertyFlag.readProperty(this.data, PropertyFlag.ON_GROUND));
+            entity.onGround = PropertyFlag.readProperty(this.data, PropertyFlag.ON_GROUND);
             ((IEntityAccessor) entity).setInWater(PropertyFlag.readProperty(this.data, PropertyFlag.IN_WATER));
             if (PropertyFlag.readProperty(this.data, PropertyFlag.CROUCH)) {
 
-                entity.setPose(Pose.CROUCHING);
+                entity.setSneaking(true);
             }
             
             CreateEntityUtil.readMobData(entity, this.compound);

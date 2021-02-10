@@ -23,37 +23,12 @@ public class MenuEntityProvider {
     private static final List<EntityMenuEntry> DEFAULT_MENU_ENTRIES = Lists.newArrayList(
 
             new MenuEntryBuilder().setType(EntityType.PLAYER).setRight().setWeight(31).renderName().build(),
-            new MenuEntryBuilder().setType(EntityType.PLAYER).setRight().renderName().setNbt("{ArmorItems:[{Count:1,id:netherite_boots},{Count:1,id:netherite_leggings},{Count:1,id:netherite_chestplate},{Count:1,id:netherite_helmet}]}").build(),
-            new MenuEntryBuilder().setType(EntityType.ZOMBIFIED_PIGLIN).setLeft().setWeight(13).build(),
-            new MenuEntryBuilder().setType(EntityType.ZOMBIFIED_PIGLIN).setLeft().setWeight(2).setNbt("{IsBaby:1,HandItems:[{Count:1,id:golden_sword},{}]}").build(),
-            new MenuEntryBuilder().setType(EntityType.CHICKEN).setLeft().setNbt("{Passengers:[{id:zombified_piglin,IsBaby:1,HandItems:[{Count:1,id:golden_sword},{}]}]}").build(),
-            new MenuEntryBuilder().setType(EntityType.GHAST).setLeft().setWeight(10).setYOffset(24).setScale(0.4F).build(),
-            new MenuEntryBuilder().setType(EntityType.MAGMA_CUBE).setLeft().setWeight(5).setNbt("{Size:0}").build(),
-            new MenuEntryBuilder().setType(EntityType.MAGMA_CUBE).setLeft().setWeight(5).setNbt("{Size:1}").build(),
-            new MenuEntryBuilder().setType(EntityType.MAGMA_CUBE).setLeft().setWeight(5).setNbt("{Size:3}").build(),
-            new MenuEntryBuilder().setType(EntityType.ENDERMAN).setLeft().setWeight(10).build(),
-            new MenuEntryBuilder().setType(EntityType.ENDERMAN).setLeft().setNbt("{carriedBlockState:{Name:crimson_fungus}}").build(),
-            new MenuEntryBuilder().setType(EntityType.ENDERMAN).setLeft().setNbt("{carriedBlockState:{Name:warped_fungus}}").build(),
-            new MenuEntryBuilder().setType(EntityType.ENDERMAN).setLeft().setNbt("{carriedBlockState:{Name:crimson_roots}}").build(),
-            new MenuEntryBuilder().setType(EntityType.ENDERMAN).setLeft().setNbt("{carriedBlockState:{Name:warped_roots}}").build(),
-            new MenuEntryBuilder().setType(EntityType.ENDERMAN).setLeft().setNbt("{carriedBlockState:{Name:crimson_nylium}}").build(),
-            new MenuEntryBuilder().setType(EntityType.ENDERMAN).setLeft().setNbt("{carriedBlockState:{Name:warped_nylium}}").build(),
-            new MenuEntryBuilder().setType(EntityType.BLAZE).setLeft().setWeight(16).build(),
-            new MenuEntryBuilder().setType(EntityType.WITHER_SKELETON).setLeft().setWeight(13).build(),
-            new MenuEntryBuilder().setType(EntityType.SKELETON).setLeft().setWeight(3).build(),
-            new MenuEntryBuilder().setType(EntityType.PIGLIN).setLeft().setWeight(13).build(),
-            new MenuEntryBuilder().setType(EntityType.PIGLIN).setLeft().setWeight(3).setNbt("{IsBaby:1}").build(),
-            new MenuEntryBuilder().setType(EntityType.field_242287_aj).setLeft().setWeight(6).build(),
-            new MenuEntryBuilder().setType(EntityType.HOGLIN).setLeft().setWeight(12).build(),
-            new MenuEntryBuilder().setType(EntityType.HOGLIN).setLeft().setNbt("{Age:-24000}").build(),
-            new MenuEntryBuilder().setType(EntityType.HOGLIN).setLeft().setNbt("{Age:-24000,Passengers:[{id:piglin,IsBaby:1}]}").build(),
-            new MenuEntryBuilder().setType(EntityType.HOGLIN).setLeft().setNbt("{Age:-24000,Passengers:[{id:piglin,IsBaby:1,Passengers:[{id:piglin,IsBaby:1}]}]}").build(),
-            new MenuEntryBuilder().setType(EntityType.HOGLIN).setLeft().setNbt("{Age:-24000,Passengers:[{id:piglin,IsBaby:1,Passengers:[{id:piglin,IsBaby:1,Passengers:[{id:piglin,IsBaby:1}]}]}]}").build(),
-            new MenuEntryBuilder().setType(EntityType.ZOGLIN).setLeft().build(),
-            new MenuEntryBuilder().setType(EntityType.STRIDER).setLeft().setWeight(10).build(),
-            new MenuEntryBuilder().setType(EntityType.STRIDER).setLeft().setWeight(2).setNbt("{Age:-24000}").build(),
-            new MenuEntryBuilder().setType(EntityType.STRIDER).setLeft().setWeight(3).setNbt("{Passengers:[{id:strider,Age:-24000}]}").build(),
-            new MenuEntryBuilder().setType(EntityType.STRIDER).setLeft().setWeight(1).setNbt("{Saddle:1,Passengers:[{id:zombified_piglin,HandItems:[{Count:1,id:warped_fungus_on_a_stick},{}]}]}").build()
+            new MenuEntryBuilder().setType(EntityType.PLAYER).setRight().renderName().setNbt("{ArmorItems:[{Count:1,id:diamond_boots},{Count:1,id:diamond_leggings},{Count:1,id:diamond_chestplate},{Count:1,id:diamond_helmet}]}").build(),
+            new MenuEntryBuilder().setType(EntityType.BEE).setLeft().setData(PropertyFlag.TICK).setScale(1.6F).setWeight(8).build(),
+            new MenuEntryBuilder().setType(EntityType.BEE).setLeft().setData(PropertyFlag.TICK).setScale(1.6F).setWeight(7).setNbt("{HasNectar:1}").build(),
+            new MenuEntryBuilder().setType(EntityType.BEE).setLeft().setData(PropertyFlag.TICK).setScale(1.6F).setNbt("{Anger:1}").build(),
+            new MenuEntryBuilder().setType(EntityType.BEE).setLeft().setData(PropertyFlag.TICK).setScale(1.6F).setWeight(2).setNbt("{Age:-24000}").build(),
+            new MenuEntryBuilder().setType(EntityType.BEE).setLeft().setData(PropertyFlag.TICK).setScale(1.6F).setWeight(2).setNbt("{Age:-24000,HasNectar:1}").build()
     );
 
     @Nullable

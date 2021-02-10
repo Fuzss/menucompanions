@@ -161,7 +161,7 @@ public class EntityMenuEntry {
 
         return CreateEntityUtil.loadEntity(this.getEntityType(), this.compound, worldIn, entity -> {
 
-            entity.setOnGround(PropertyFlag.readProperty(this.data, PropertyFlag.ON_GROUND));
+            entity.onGround = PropertyFlag.readProperty(this.data, PropertyFlag.ON_GROUND);
             ((IEntityAccessor) entity).setInWater(PropertyFlag.readProperty(this.data, PropertyFlag.IN_WATER));
             if (entity instanceof MobEntity && PropertyFlag.readProperty(this.data, PropertyFlag.AGGRESSIVE)) {
 
@@ -170,7 +170,7 @@ public class EntityMenuEntry {
 
             if (PropertyFlag.readProperty(this.data, PropertyFlag.CROUCH)) {
 
-                entity.setPose(Pose.CROUCHING);
+                entity.setSneaking(true);
             }
 
             CreateEntityUtil.onInitialSpawn(entity, worldIn, this.compound.isEmpty());

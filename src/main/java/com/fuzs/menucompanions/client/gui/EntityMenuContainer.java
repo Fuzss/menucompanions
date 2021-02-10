@@ -16,8 +16,7 @@ import net.minecraft.client.audio.ISound;
 import net.minecraft.client.audio.SimpleSound;
 import net.minecraft.client.audio.SoundHandler;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.ActiveRenderInfo;
-import net.minecraft.client.renderer.IRenderTypeBuffer;
+import net.minecraft.client.renderer.*;
 import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -28,11 +27,7 @@ import net.minecraft.util.DamageSource;
 import net.minecraft.util.Hand;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.vector.Matrix4f;
-import net.minecraft.util.math.vector.Quaternion;
-import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.math.vector.Vector3f;
-import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.math.Vec3d;
 import org.apache.commons.lang3.tuple.Pair;
 
 import javax.annotation.Nonnull;
@@ -43,7 +38,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@SuppressWarnings("deprecation")
 public class EntityMenuContainer implements IStateContainer {
 
     private final Minecraft mc;
@@ -212,7 +206,7 @@ public class EntityMenuContainer implements IStateContainer {
         ActiveRenderInfo activerenderinfo = this.mc.gameRenderer.getActiveRenderInfo();
         // allows fire to be rendered on mobs as it requires an active render info object
         this.mc.getRenderManager().cacheActiveRenderInfo(this.world, activerenderinfo, this.entity);
-        ((IActiveRenderInfoAccessor) activerenderinfo).callSetPosition(Vector3d.ZERO);
+        ((IActiveRenderInfoAccessor) activerenderinfo).callSetPosition(Vec3d.ZERO);
         ((IActiveRenderInfoAccessor) activerenderinfo).callSetDirection(0.0F, 0.0F);
 
         scale *= this.scale;
@@ -239,7 +233,7 @@ public class EntityMenuContainer implements IStateContainer {
         this.renderParticles(matrixstack, partialTicks);
         for (Entity entity : this.selfAndPassengers) {
 
-            Vector3d posVec = entity.getPositionVec().subtract(this.entity.getPositionVec());
+            Vec3d posVec = entity.getPositionVec().subtract(this.entity.getPositionVec());
             double eyeVec = entity.getPosYEye() - this.entity.getPosYEye();
             if (this.setInitialAngles) {
 
@@ -330,7 +324,7 @@ public class EntityMenuContainer implements IStateContainer {
             float soundVolume = ((ILivingEntityAccessor) livingEntity).callGetSoundVolume() * volume;
             float soundPitch = ((ILivingEntityAccessor) livingEntity).callGetSoundPitch();
             handler.play(new SimpleSound(soundEvent.getName(), livingEntity.getSoundCategory(), soundVolume, soundPitch, false, 0,
-                    ISound.AttenuationType.NONE, livingEntity.getPosX(), livingEntity.getPosY(), livingEntity.getPosZ(), true));
+                    ISound.AttenuationType.NONE, (float) livingEntity.getPosX(), (float) livingEntity.getPosY(), (float) livingEntity.getPosZ(), true));
 
             return true;
         }
@@ -433,18 +427,16 @@ public class EntityMenuContainer implements IStateContainer {
         EntityRendererManager entityrenderermanager = Minecraft.getInstance().getRenderManager();
         entityrenderermanager.setRenderShadow(false);
         IRenderTypeBuffer.Impl irendertypebuffer = Minecraft.getInstance().getRenderTypeBuffers().getBufferSource();
-        RenderSystem.runAsFancy(() -> {
 
-            Consumer<Entity> render = safeEntity -> entityrenderermanager.renderEntityStatic(entity, 0.0, 0.0, 0.0, 0.0F, partialTicks, matrixstack, irendertypebuffer, 15728880);
-            Consumer<Entity> orElse = safeEntity -> {
+        Consumer<Entity> render = safeEntity -> entityrenderermanager.renderEntityStatic(entity, 0.0, 0.0, 0.0, 0.0F, partialTicks, matrixstack, irendertypebuffer, 15728880);
+        Consumer<Entity> orElse = safeEntity -> {
 
-                MenuEntityElement.get().addToBlacklist(safeEntity.getType());
-                invalidate.run();
-            };
+            MenuEntityElement.get().addToBlacklist(safeEntity.getType());
+            invalidate.run();
+        };
 
-            PuzzlesLibUtil.runOrElse(entity, render, orElse);
-            renderName.accept(irendertypebuffer, 15728880);
-        });
+        PuzzlesLibUtil.runOrElse(entity, render, orElse);
+        renderName.accept(irendertypebuffer, 15728880);
 
         irendertypebuffer.finish();
         entityrenderermanager.setRenderShadow(true);
@@ -453,8 +445,8 @@ public class EntityMenuContainer implements IStateContainer {
 
     private static void renderName(MatrixStack matrixStackIn, IRenderTypeBuffer bufferIn, int packedLightIn, Entity entityIn, float renderHeight) {
 
-        ITextComponent displayNameIn = entityIn.getDisplayName();
-        float renderOffset = "deadmau5".equals(displayNameIn.getString()) ? -10 : 0;
+        String displayNameIn = entityIn.getDisplayName().getFormattedText();
+        float renderOffset = "deadmau5".equals(displayNameIn) ? -10 : 0;
 
         matrixStackIn.push();
         matrixStackIn.translate(0.0, renderHeight, 0.0);
@@ -464,9 +456,9 @@ public class EntityMenuContainer implements IStateContainer {
         float backgroundOpacity = Minecraft.getInstance().gameSettings.getTextBackgroundOpacity(0.25F);
         int alpha = (int) (backgroundOpacity * 255.0F) << 24;
         FontRenderer fontrenderer = Minecraft.getInstance().fontRenderer;
-        int textWidth = -fontrenderer.getStringPropertyWidth(displayNameIn) / 2;
-        fontrenderer.func_243247_a(displayNameIn, textWidth, renderOffset, 553648127, false, matrix4f, bufferIn, true, alpha, packedLightIn);
-        fontrenderer.func_243247_a(displayNameIn, textWidth, renderOffset, -1, false, matrix4f, bufferIn, false, 0, packedLightIn);
+        int textWidth = -fontrenderer.getStringWidth(displayNameIn) / 2;
+        fontrenderer.renderString(displayNameIn, textWidth, renderOffset, 553648127, false, matrix4f, bufferIn, true, alpha, packedLightIn);
+        fontrenderer.renderString(displayNameIn, textWidth, renderOffset, -1, false, matrix4f, bufferIn, false, 0, packedLightIn);
 
         matrixStackIn.pop();
     }
