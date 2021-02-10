@@ -18,8 +18,8 @@ public class MenuCompanions extends PuzzlesLib {
 
         super();
         MenuCompanionsElements.setup(MODID);
-        ConfigManager.get().load(MODID);
-        this.setClientSideOnly();
+        ConfigManager.get().load();
+        this.setSideSideOnly();
     }
 
 }

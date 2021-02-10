@@ -11,6 +11,11 @@ interface IStateContainer {
         return this.getState() == ContainerState.ENABLED;
     }
 
+    default boolean isNotEnabled() {
+
+        return !this.isEnabled() && this.getState() != ContainerState.UPDATE_REQUIRED;
+    }
+
     default boolean isDisabled() {
 
         return this.getState() == ContainerState.DISABLED;
@@ -18,31 +23,36 @@ interface IStateContainer {
 
     default boolean isInvalid() {
 
-        return this.getState() == ContainerState.INVALID;
+        return this.getState() == ContainerState.INVALID || this.getState() == ContainerState.UPDATE_REQUIRED;
     }
 
-    default void invalidate() {
+    default void setEnabled(boolean enable) {
 
-        if (this.getState() != ContainerState.DISABLED) {
+        this.setState(enable ? ContainerState.ENABLED : ContainerState.DISABLED);
+    }
+
+    default void setUpdateRequired() {
+
+        if (this.isEnabled()) {
+
+            this.setState(ContainerState.UPDATE_REQUIRED);
+        } else if (!this.isDisabled()) {
 
             this.setState(ContainerState.INVALID);
         }
     }
 
-    default void setEnabled(boolean enabled) {
+    default void setInvalid() {
 
-        if (!enabled) {
+        if (!this.isDisabled() && this.getState() != ContainerState.BROKEN) {
 
-            this.setState(ContainerState.DISABLED);
-        } else {
-
-            this.setState(ContainerState.ENABLED);
+            this.setState(ContainerState.INVALID);
         }
     }
 
     default void setBroken() {
 
-        if (this.getState() == ContainerState.INVALID) {
+        if (!this.isDisabled()) {
 
             this.setState(ContainerState.BROKEN);
         }
@@ -55,7 +65,7 @@ interface IStateContainer {
 
     enum ContainerState {
 
-        DISABLED, ENABLED, INVALID, BROKEN
+        DISABLED, ENABLED, UPDATE_REQUIRED, INVALID, BROKEN
     }
     
 }

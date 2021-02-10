@@ -2,23 +2,24 @@ package com.fuzs.menucompanions.client.storage;
 
 import com.fuzs.menucompanions.client.element.MenuEntityElement;
 import com.fuzs.puzzleslib_mc.config.json.JsonConfigFileUtil;
+import com.fuzs.puzzleslib_mc.util.PuzzlesLibUtil;
 import com.google.common.collect.Lists;
-import com.google.gson.JsonArray;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import net.minecraft.entity.EntityType;
-import net.minecraft.util.JSONUtils;
 
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileReader;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class MenuEntityProvider {
 
+    private static final List<EntityMenuEntry> MENU_ENTRIES = Lists.newArrayList();
     private static final List<EntityMenuEntry> DEFAULT_MENU_ENTRIES = Lists.newArrayList(
 
             new MenuEntryBuilder().setType(EntityType.PLAYER).setRight().setWeight(31).renderName().build(),
@@ -55,72 +56,49 @@ public class MenuEntityProvider {
             new MenuEntryBuilder().setType(EntityType.STRIDER).setLeft().setWeight(1).setNbt("{Saddle:1,Passengers:[{id:zombified_piglin,HandItems:[{Count:1,id:warped_fungus_on_a_stick},{}]}]}").build()
     );
 
-    private static final int FILE_FORMAT = 1;
-    private static final List<EntityMenuEntry> MENU_ENTRIES = Lists.newArrayList();
-
     @Nullable
     public static EntityMenuEntry getRandomEntry(MenuEntityElement.MenuSide side) {
 
         List<EntityMenuEntry> sidedEntries = MENU_ENTRIES.stream().filter(entry -> entry.isSide(side)).collect(Collectors.toList());
-        if (sidedEntries.isEmpty()) {
 
-            return null;
-        }
-
-        int weight = (int) (sidedEntries.stream().mapToInt(EntityMenuEntry::getWeight).sum() * Math.random());
-        Collections.shuffle(sidedEntries);
-        for (EntityMenuEntry entry : sidedEntries) {
-
-            weight -= entry.getWeight();
-            if (weight <= 0) {
-
-                return entry;
-            }
-        }
-
-        return null;
+        return PuzzlesLibUtil.getRandomEntry(sidedEntries, EntityMenuEntry::getWeight);
     }
 
-    public static void serialize(String jsonName, File jsonFile) {
+    public static void removeEntry(EntityMenuEntry entry) {
 
-        JsonArray jsonarray = new JsonArray();
-        JsonObject jsonobject = new JsonObject();
-        jsonobject.addProperty("__comment", "For documentation check the project page on CurseForge.");
-        jsonobject.addProperty("file_format", FILE_FORMAT);
-        jsonarray.add(jsonobject);
-        DEFAULT_MENU_ENTRIES.forEach(entry -> jsonarray.add(entry.serialize()));
-        JsonConfigFileUtil.saveToFile(jsonName, jsonFile, jsonarray);
+        MENU_ENTRIES.remove(entry);
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    public static void serialize(File jsonFile) {
+
+        // sort directly by path and not by entity type in case entities from different mods have the same name
+        Multimap<String, EntityMenuEntry> defaultsAsMap = Multimaps.index(DEFAULT_MENU_ENTRIES, entry -> entry.getRawType().getRegistryName().getPath());
+        for (Map.Entry<String, Collection<EntityMenuEntry>> mapEntry : defaultsAsMap.asMap().entrySet()) {
+
+            int index = 0;
+            for (EntityMenuEntry entry : mapEntry.getValue()) {
+
+                String fileName = String.format("%s%d.json", mapEntry.getKey(), ++index);
+                File file = new File(jsonFile, String.join(File.separator, mapEntry.getKey(), fileName));
+                JsonConfigFileUtil.saveToFile(file, entry.serialize());
+            }
+        }
     }
 
     public static void deserialize(FileReader reader) {
 
+        JsonElement jsonelement = JsonConfigFileUtil.GSON.fromJson(reader, JsonElement.class);
+        EntityMenuEntry deserialize = MenuEntryBuilder.deserialize(jsonelement);
+        if (deserialize != null) {
+
+            MENU_ENTRIES.add(deserialize);
+        }
+    }
+
+    public static void clear() {
+
         MENU_ENTRIES.clear();
-        JsonElement[] elements = JsonConfigFileUtil.GSON.fromJson(reader, JsonElement[].class);
-        int version = 0;
-        for (JsonElement jsonelement : elements) {
-
-            if (jsonelement != null && jsonelement.isJsonObject()) {
-
-                JsonObject jsonobject = jsonelement.getAsJsonObject();
-                if (jsonobject.has("file_format")) {
-
-                    version = JSONUtils.getInt(jsonobject, "file_format");
-                    break;
-                }
-            }
-        }
-
-        for (JsonElement jsonelement : elements) {
-
-            if (jsonelement != null && jsonelement.isJsonObject()) {
-
-                JsonObject jsonobject = jsonelement.getAsJsonObject();
-                if (jsonobject.has("id")) {
-
-                    Optional.ofNullable(MenuEntryBuilder.deserialize(jsonelement, version)).ifPresent(MENU_ENTRIES::add);
-                }
-            }
-        }
     }
 
 }

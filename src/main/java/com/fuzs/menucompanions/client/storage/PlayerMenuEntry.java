@@ -20,14 +20,12 @@ public class PlayerMenuEntry extends EntityMenuEntry {
 
     private final String profile;
     private final byte modelParts;
-    private final boolean crouching;
 
-    public PlayerMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityElement.MenuSide side, String profile, byte modelParts, boolean crouching) {
+    public PlayerMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityElement.MenuSide side, String profile, byte modelParts) {
 
         super(type, compound, data, scale, xOffset, yOffset, nameplate, particles, weight, side);
         this.profile = profile;
         this.modelParts = modelParts;
-        this.crouching = crouching;
     }
 
     @Nullable
@@ -36,14 +34,15 @@ public class PlayerMenuEntry extends EntityMenuEntry {
         CreateEntityUtil.setGameProfile(this.profile);
         return CreateEntityUtil.loadEntity(EntityType.PLAYER, this.compound, worldIn, entity -> {
 
-            entity.setOnGround(this.readProperty(PropertyFlags.ON_GROUND));
-            ((IEntityAccessor) entity).setInWater(this.readProperty(PropertyFlags.IN_WATER));
-            CreateEntityUtil.readMobData(entity, this.compound);
-            entity.getDataManager().set(IPlayerEntityAccessor.getPlayerModelFlag(), this.modelParts);
-            if (this.crouching) {
+            entity.setOnGround(PropertyFlag.readProperty(this.data, PropertyFlag.ON_GROUND));
+            ((IEntityAccessor) entity).setInWater(PropertyFlag.readProperty(this.data, PropertyFlag.IN_WATER));
+            if (PropertyFlag.readProperty(this.data, PropertyFlag.CROUCHING)) {
 
                 entity.setPose(Pose.CROUCHING);
             }
+            
+            CreateEntityUtil.readMobData(entity, this.compound);
+            entity.getDataManager().set(IPlayerEntityAccessor.getPlayerModelFlag(), this.modelParts);
 
             return entity;
         });
@@ -62,7 +61,6 @@ public class PlayerMenuEntry extends EntityMenuEntry {
 
         JsonObject jsonobject = new JsonObject();
         jsonobject.addProperty("profile", this.profile);
-        jsonobject.addProperty("crouching", this.crouching);
         jsonobject.add(MODEL_NAME, this.serializeModel());
 
         return jsonobject;

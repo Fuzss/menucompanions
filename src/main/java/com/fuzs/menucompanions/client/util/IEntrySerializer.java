@@ -93,7 +93,7 @@ public interface IEntrySerializer {
         byte data = 0;
         for (T constant : clazz.getEnumConstants()) {
 
-            if (JSONUtils.getBoolean(jsonobject, key.apply(constant))) {
+            if (JSONUtils.getBoolean(jsonobject, key.apply(constant), false)) {
 
                 data |= value.apply(constant);
             }

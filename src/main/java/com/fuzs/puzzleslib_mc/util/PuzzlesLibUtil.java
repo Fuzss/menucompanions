@@ -4,12 +4,15 @@ import com.fuzs.menucompanions.MenuCompanions;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Optional;
+import java.util.Collection;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * small helper methods
  */
+@SuppressWarnings({"unused", "UnusedReturnValue"})
 public class PuzzlesLibUtil {
 
     /**
@@ -42,9 +45,61 @@ public class PuzzlesLibUtil {
      * @param action action to perform
      * @param <T> type of object
      */
-    public static <T> void acceptIfPresent(@Nullable T object, Consumer<T> action) {
+    public static <T> boolean acceptIfPresent(@Nullable T object, Consumer<T> action) {
 
-        Optional.ofNullable(object).ifPresent(action);
+        if (object != null) {
+
+            action.accept(object);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * get an instance that might not have been created yet
+     * @param instance instance to get, might have to be created
+     * @param supplier supplier for creating instance
+     * @param consumer save created instance
+     * @param <T> instance type
+     * @return the instance
+     */
+    public static <T> T getOrElse(@Nullable T instance, Supplier<T> supplier, Consumer<T> consumer) {
+
+        if (instance == null) {
+
+            instance = supplier.get();
+            consumer.accept(instance);
+        }
+
+        return instance;
+    }
+
+    /**
+     * might want to wrap this in an optional
+     * @param collection collection to get entry from
+     * @param weight weight getter function
+     * @param <T> type of objects in collection
+     * @return random entry or null when collection is empty
+     */
+    @Nullable
+    public static <T> T getRandomEntry(Collection<T> collection, Function<T, Integer> weight) {
+
+        if (!collection.isEmpty()) {
+
+            int totalWeight = (int) (collection.stream().map(weight).mapToInt(Integer::intValue).sum() * Math.random());
+            for (T entry : collection) {
+
+                totalWeight -= weight.apply(entry);
+                if (totalWeight < 0) {
+
+                    return entry;
+                }
+            }
+        }
+
+        return null;
     }
     
 }

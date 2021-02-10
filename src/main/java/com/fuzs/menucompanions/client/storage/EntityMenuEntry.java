@@ -7,10 +7,7 @@ import com.fuzs.menucompanions.client.world.MenuClientWorld;
 import com.fuzs.menucompanions.mixin.client.accessor.IEntityAccessor;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityClassification;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.MobEntity;
+import net.minecraft.entity.*;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -28,7 +25,7 @@ public class EntityMenuEntry {
     @Nullable
     private final EntityType<?> type;
     protected final CompoundNBT compound;
-    private final byte data;
+    protected final byte data;
     private final float scale;
     private final int xOffset;
     private final int yOffset;
@@ -54,6 +51,12 @@ public class EntityMenuEntry {
     private boolean isTypeSet() {
 
         return this.type != null;
+    }
+
+    @Nullable
+    public EntityType<?> getRawType() {
+
+        return this.type;
     }
 
     public float getScale(Entity entity) {
@@ -133,17 +136,17 @@ public class EntityMenuEntry {
 
     public boolean isTick() {
 
-        return this.readProperty(PropertyFlags.TICK);
+        return PropertyFlag.readProperty(this.data, PropertyFlag.TICK);
     }
 
     public boolean isWalking() {
 
-        return this.readProperty(PropertyFlags.WALKING);
+        return PropertyFlag.readProperty(this.data, PropertyFlag.WALKING);
     }
 
     public boolean isInLove() {
 
-        return this.readProperty(PropertyFlags.IN_LOVE);
+        return PropertyFlag.readProperty(this.data, PropertyFlag.IN_LOVE);
     }
 
     @Nullable
@@ -151,11 +154,16 @@ public class EntityMenuEntry {
 
         return CreateEntityUtil.loadEntity(this.getEntityType(), this.compound, worldIn, entity -> {
 
-            entity.setOnGround(this.readProperty(PropertyFlags.ON_GROUND));
-            ((IEntityAccessor) entity).setInWater(this.readProperty(PropertyFlags.IN_WATER));
-            if (entity instanceof MobEntity && this.readProperty(PropertyFlags.AGGRESSIVE)) {
+            entity.setOnGround(PropertyFlag.readProperty(this.data, PropertyFlag.ON_GROUND));
+            ((IEntityAccessor) entity).setInWater(PropertyFlag.readProperty(this.data, PropertyFlag.IN_WATER));
+            if (entity instanceof MobEntity && PropertyFlag.readProperty(this.data, PropertyFlag.AGGRESSIVE)) {
 
                 ((MobEntity) entity).setAggroed(true);
+            }
+
+            if (PropertyFlag.readProperty(this.data, PropertyFlag.CROUCHING)) {
+
+                entity.setPose(Pose.CROUCHING);
             }
 
             CreateEntityUtil.onInitialSpawn(entity, worldIn, this.compound.isEmpty());
@@ -194,8 +202,8 @@ public class EntityMenuEntry {
         if (this.isTypeSet()) {
 
             jsonobject.addProperty("scale", this.scale);
-            jsonobject.addProperty("x_offset", this.xOffset);
-            jsonobject.addProperty("y_offset", this.yOffset);
+            jsonobject.addProperty("xoffset", this.xOffset);
+            jsonobject.addProperty("yoffset", this.yOffset);
         }
 
         jsonobject.addProperty("nameplate", this.nameplate);
@@ -213,14 +221,9 @@ public class EntityMenuEntry {
             jsonobject.addProperty("nbt", IEntrySerializer.serializeNBT(this.compound));
         }
 
-        IEntrySerializer.serializeEnumProperties(jsonobject, PropertyFlags.class, this.data, PropertyFlags::toString, PropertyFlags::getPropertyMask);
+        IEntrySerializer.serializeEnumProperties(jsonobject, PropertyFlag.class, this.data, PropertyFlag::toString, PropertyFlag::getPropertyMask);
 
         return jsonobject;
-    }
-
-    protected boolean readProperty(PropertyFlags property) {
-
-        return (this.data & property.getPropertyMask()) == property.getPropertyMask();
     }
 
 }

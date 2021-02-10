@@ -120,7 +120,7 @@ public class ConfigBuilder {
         if (folderName.length > 0) {
 
             String prefix = String.join(File.separator, folderName);
-            JsonConfigFileUtil.mkdir(prefix);
+            JsonConfigFileUtil.mkdirs(prefix);
             this.configTypeEntries.values().forEach(typeEntry -> typeEntry.setPrefix(prefix + File.separator));
         } else {
 

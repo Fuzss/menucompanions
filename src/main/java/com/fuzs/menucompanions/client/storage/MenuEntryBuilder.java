@@ -18,7 +18,7 @@ public class MenuEntryBuilder {
 
     private EntityType<?> type = null;
     private String nbt = "";
-    private byte data = 7;
+    private byte data = new PropertyFlag.Builder().add(PropertyFlag.TICK).add(PropertyFlag.IN_WATER).add(PropertyFlag.ON_GROUND).get();
     private float scale = 1.0F;
     private int xOffset = 0;
     private int yOffset = 0;
@@ -28,7 +28,6 @@ public class MenuEntryBuilder {
     private MenuEntityElement.MenuSide side = MenuEntityElement.MenuSide.BOTH;
     private String profile = "";
     private byte modelParts = 127;
-    private boolean crouching = false;
 
     public EntityMenuEntry build() {
 
@@ -48,7 +47,7 @@ public class MenuEntryBuilder {
 
         if (this.type == EntityType.PLAYER) {
 
-            return new PlayerMenuEntry(this.type, compound, this.data, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.side, this.profile, this.modelParts, this.crouching);
+            return new PlayerMenuEntry(this.type, compound, this.data, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.side, this.profile, this.modelParts);
         }
 
         return new EntityMenuEntry(this.type, compound, this.data, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.side);
@@ -66,9 +65,9 @@ public class MenuEntryBuilder {
         return this;
     }
 
-    public MenuEntryBuilder setData(int data) {
+    public MenuEntryBuilder setData(byte data) {
 
-        this.data = (byte) data;
+        this.data = data;
         return this;
     }
 
@@ -138,12 +137,6 @@ public class MenuEntryBuilder {
         return this;
     }
 
-    private MenuEntryBuilder setCrouching(boolean crouching) {
-
-        this.crouching = crouching;
-        return this;
-    }
-
     public MenuEntryBuilder setProfile(String profile) {
 
         this.profile = profile;
@@ -156,19 +149,13 @@ public class MenuEntryBuilder {
         return this;
     }
 
-    public MenuEntryBuilder setCrouching() {
-
-        this.crouching = true;
-        return this;
-    }
-
     @Nullable
-    public static EntityMenuEntry deserialize(@Nullable JsonElement element, int version) {
+    public static EntityMenuEntry deserialize(@Nullable JsonElement element) {
 
-        if (element != null && element.isJsonObject()) {
+        if (element != null && element.isJsonObject() && element.getAsJsonObject().has("id")) {
 
             MenuEntryBuilder builder = new MenuEntryBuilder();
-            JsonObject jsonobject = JSONUtils.getJsonObject(element, "mob_entry");
+            JsonObject jsonobject = element.getAsJsonObject();
             JsonObject displayobject = JSONUtils.getJsonObject(jsonobject, EntityMenuEntry.DISPLAY_NAME);
             JsonObject dataobject = JSONUtils.getJsonObject(jsonobject, EntityMenuEntry.DATA_NAME);
 
@@ -189,12 +176,12 @@ public class MenuEntryBuilder {
             builder.setNameplate(JSONUtils.getBoolean(displayobject, "nameplate"));
             builder.setParticles(JSONUtils.getBoolean(displayobject, "particles"));
             builder.setSide(IEntrySerializer.deserializeEnum(displayobject, "side", MenuEntityElement.MenuSide.class, MenuEntityElement.MenuSide.BOTH));
-            builder.setData(IEntrySerializer.deserializeEnumProperties(dataobject, PropertyFlags.class, PropertyFlags::toString, PropertyFlags::getPropertyMask));
+            builder.setData((byte) IEntrySerializer.deserializeEnumProperties(dataobject, PropertyFlag.class, PropertyFlag::toString, PropertyFlag::getPropertyMask));
             if (type != null) {
 
                 builder.setScale(JSONUtils.getFloat(displayobject, "scale"));
-                builder.setXOffset(JSONUtils.getInt(displayobject, "x_offset"));
-                builder.setYOffset(JSONUtils.getInt(displayobject, "y_offset"));
+                builder.setXOffset(JSONUtils.getInt(displayobject, "xoffset"));
+                builder.setYOffset(JSONUtils.getInt(displayobject, "yoffset"));
                 builder.setNbt(JSONUtils.getString(dataobject, "nbt"));
 
                 if (type == EntityType.PLAYER) {
@@ -202,7 +189,6 @@ public class MenuEntryBuilder {
                     JsonObject playerobject = JSONUtils.getJsonObject(jsonobject, EntityMenuEntry.PLAYER_NAME);
                     JsonObject modelobject = JSONUtils.getJsonObject(playerobject, EntityMenuEntry.MODEL_NAME);
                     builder.setProfile(JSONUtils.getString(playerobject, "profile"));
-                    builder.setCrouching(JSONUtils.getBoolean(playerobject, "crouching"));
                     builder.setModelParts(IEntrySerializer.deserializeEnumProperties(modelobject, PlayerModelPart.class, PlayerModelPart::getPartName, PlayerModelPart::getPartMask));
                 }
             }

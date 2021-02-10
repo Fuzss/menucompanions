@@ -32,6 +32,7 @@ import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.math.vector.Vector3f;
 import net.minecraft.util.text.ITextComponent;
+import org.apache.commons.lang3.tuple.Pair;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -49,7 +50,7 @@ public class EntityMenuContainer implements IStateContainer {
     private MenuClientWorld world;
     public MenuParticleManager particleManager;
     private ContainerState containerState = this.getDefaultState();
-    private boolean setRotationAngles;
+    private boolean setInitialAngles;
 
     private Entity entity;
     private Entity[] selfAndPassengers;
@@ -86,26 +87,36 @@ public class EntityMenuContainer implements IStateContainer {
     }
 
     @Override
-    public void setEnabled(boolean enabled) {
+    public void setEnabled(boolean enable) {
 
-        IStateContainer.super.setEnabled(enabled);
-        if (this.isEnabled() && this.entity == null) {
+        IStateContainer.super.setEnabled(enable);
+        if (this.entity == null) {
 
-            this.setState(ContainerState.INVALID);
+            this.setInvalid();
         }
     }
 
     public void createEntity(@Nonnull Entity entity, @Nonnull EntityMenuEntry entry, boolean isRightSide) {
 
         this.entity = entity;
-        this.selfAndPassengers = entity.getSelfAndPassengers().toArray(Entity[]::new);
-        this.copyEntityData(entry, entity, isRightSide);
+        this.copyEntryData(entry, entity, isRightSide);
+        this.selfAndPassengers = this.getSelfAndPassengers(entity);
         this.setEnabled(true);
-        this.setRotationAngles = true;
-        this.particleManager.clearEffects();
+        this.setInitialAngles = true;
     }
 
-    private void copyEntityData(EntityMenuEntry entry, Entity entity, boolean isRightSide) {
+    private Entity[] getSelfAndPassengers(Entity entity) {
+
+        Entity[] selfAndPassengers = entity.getSelfAndPassengers().toArray(Entity[]::new);
+        if (!copyAllEntityData(this.selfAndPassengers, selfAndPassengers)) {
+
+            this.particleManager.clearEffects();
+        }
+
+        return selfAndPassengers;
+    }
+
+    private void copyEntryData(EntityMenuEntry entry, Entity entity, boolean isRightSide) {
 
         this.tick = entry.isTick();
         this.walking = entry.isWalking();
@@ -119,7 +130,7 @@ public class EntityMenuContainer implements IStateContainer {
 
     public void tick() {
 
-        if (!this.isEnabled()) {
+        if (this.isNotEnabled()) {
 
             return;
         }
@@ -135,7 +146,7 @@ public class EntityMenuContainer implements IStateContainer {
             entity.ticksExisted++;
             if (entity instanceof LivingEntity) {
 
-                this.updateLimbSwing((LivingEntity) entity, this.walking ? 0.6F : 0.0F);
+                this.updateLimbSwing((LivingEntity) entity, this.walking ? (entity.isCrouching() ? 0.18F : 0.6F) : 0.0F);
                 this.spawnNectarParticles(entity);
                 if (((LivingEntity) entity).hurtTime > 0) {
 
@@ -144,7 +155,7 @@ public class EntityMenuContainer implements IStateContainer {
 
                 if (this.tick) {
 
-                    this.tick = PuzzlesLibUtil.runOrElse(entity, safeEntity -> ((LivingEntity) safeEntity).livingTick(), safeEntity -> {});
+                    PuzzlesLibUtil.runOrElse(entity, safeEntity -> ((LivingEntity) safeEntity).livingTick(), safeEntity -> this.tick = false);
                 }
             }
 
@@ -153,12 +164,6 @@ public class EntityMenuContainer implements IStateContainer {
 
                 Objects.requireNonNull(entity.getRidingEntity()).updatePassenger(entity);
             }
-        }
-
-        int displayTime = MenuEntityElement.get().displayTime * 20;
-        if (displayTime != 0 && this.entity.ticksExisted > displayTime) {
-
-            this.invalidate();
         }
     }
 
@@ -196,7 +201,7 @@ public class EntityMenuContainer implements IStateContainer {
 
     public void render(int posX, int posY, float scale, float mouseX, float mouseY, float partialTicks) {
 
-        if (!this.isEnabled()) {
+        if (this.isNotEnabled()) {
 
             return;
         }
@@ -233,12 +238,14 @@ public class EntityMenuContainer implements IStateContainer {
 
             Vector3d posVec = entity.getPositionVec().subtract(this.entity.getPositionVec());
             double eyeVec = entity.getPosYEye() - this.entity.getPosYEye();
-            setRotationAngles(entity, mouseX, mouseY - (float) eyeVec / 1.62F * 50.0F * this.scale);
-            if (this.setRotationAngles) {
+            if (this.setInitialAngles) {
 
                 setRotationAngles(entity, mouseX, mouseY + (float) posVec.getY() * scale);
+                // run single tick to update passenger position
+                this.tick();
             }
 
+            setRotationAngles(entity, mouseX, mouseY - (float) eyeVec / 1.62F * 50.0F * this.scale);
             drawEntityOnScreen(matrixstack, posVec.getX(), posVec.getY(), posVec.getZ(), partialTicks, entity, (irendertypebuffer, packedLightIn) -> {
 
                 if (this.nameplate) {
@@ -249,10 +256,10 @@ public class EntityMenuContainer implements IStateContainer {
                     renderName(matrixstack, irendertypebuffer, packedLightIn, entity, (entity.getHeight() + 0.5F) * this.scale);
                     matrixstack.pop();
                 }
-            }, this::invalidate);
+            }, this::setInvalid);
         }
 
-        this.setRotationAngles = false;
+        this.setInitialAngles = false;
         RenderSystem.popMatrix();
     }
 
@@ -275,7 +282,7 @@ public class EntityMenuContainer implements IStateContainer {
 
     public void playLivingSound(SoundHandler handler, float volume, boolean hurtEntity) {
 
-        if (!this.isEnabled()) {
+        if (this.isNotEnabled()) {
 
             return;
         }
@@ -301,16 +308,7 @@ public class EntityMenuContainer implements IStateContainer {
 
             livingEntity.hurtTime = 10;
             livingEntity.limbSwingAmount = 1.5F;
-            for(int i = 0; i < 2; i++) {
-
-                double posX = livingEntity.getPosX() + this.world.rand.nextGaussian() * 0.2;
-                double posY = livingEntity.getPosYHeight(0.5);
-                double posZ = livingEntity.getPosZ() - 0.3 + this.world.rand.nextGaussian() * 0.2;
-                double xSpeed = this.world.rand.nextGaussian() * 0.02;
-                double zSpeed = this.world.rand.nextGaussian() * 0.02;
-                this.world.addParticle(ParticleTypes.DAMAGE_INDICATOR, posX, posY, posZ, xSpeed, 0.0, zSpeed);
-            }
-
+            this.spawnDamageParticles(livingEntity);
             SoundEvent hurtSound = ((ILivingEntityAccessor) livingEntity).callGetHurtSound(DamageSource.GENERIC);
             this.playLivingSound(handler, livingEntity, hurtSound, volume);
         }
@@ -331,6 +329,19 @@ public class EntityMenuContainer implements IStateContainer {
         return false;
     }
 
+    private void spawnDamageParticles(LivingEntity livingEntity) {
+
+        for(int i = 0; i < this.world.rand.nextInt(5) + 1; i++) {
+
+            double posX = livingEntity.getPosX() + this.world.rand.nextGaussian() * 0.2;
+            double posY = livingEntity.getPosYHeight(0.5);
+            double posZ = livingEntity.getPosZ() - 0.3 + this.world.rand.nextGaussian() * 0.2;
+            double xSpeed = this.world.rand.nextGaussian() * 0.02;
+            double zSpeed = this.world.rand.nextGaussian() * 0.02;
+            this.world.addParticle(ParticleTypes.DAMAGE_INDICATOR, posX, posY, posZ, xSpeed, 0.0, zSpeed);
+        }
+    }
+
     private static void setRotationAngles(Entity entity, float mouseX, float mouseY) {
 
         entity.prevRotationYaw = entity.rotationYaw;
@@ -347,7 +358,66 @@ public class EntityMenuContainer implements IStateContainer {
         }
     }
 
-    private static void drawEntityOnScreen(MatrixStack matrixstack, double posX, double posY, double posZ, float partialTicks, Entity entity, BiConsumer<IRenderTypeBuffer, Integer> renderName, Runnable invalidation) {
+    private static boolean copyAllEntityData(Entity[] source, @Nonnull Entity[] target) {
+
+        if (source == null) {
+
+            return false;
+        }
+
+        boolean successfulForAll = true;
+        int bound = Math.min(source.length, target.length);
+        for (int i = 0; i < bound; i++) {
+
+            Pair<Entity, Entity> pair = Pair.of(source[i], target[i]);
+            if (pair.getLeft().getType() == pair.getRight().getType()) {
+
+                copyEntityData(pair.getLeft(), pair.getRight());
+            } else {
+
+                successfulForAll = false;
+            }
+        }
+
+        return successfulForAll;
+    }
+
+    private static void copyEntityData(Entity source, @Nonnull Entity target) {
+
+        if (source != null) {
+
+            target.ticksExisted = source.ticksExisted;
+            copyRotationAngles(source, target);
+            if (source instanceof LivingEntity && target instanceof LivingEntity) {
+
+                LivingEntity livingSource = (LivingEntity) source;
+                LivingEntity livingTarget = (LivingEntity) target;
+                livingTarget.prevLimbSwingAmount = livingSource.prevLimbSwingAmount;
+                livingTarget.limbSwingAmount = livingSource.limbSwingAmount;
+                livingTarget.limbSwing = livingSource.limbSwing;
+                livingTarget.hurtTime = livingSource.hurtTime;
+            }
+        }
+    }
+
+    private static void copyRotationAngles(Entity source, Entity target) {
+
+        target.prevRotationYaw = source.prevRotationYaw;
+        target.prevRotationPitch = source.prevRotationPitch;
+        target.rotationYaw = source.rotationYaw;
+        target.rotationPitch = source.rotationPitch;
+        if (source instanceof LivingEntity && target instanceof LivingEntity) {
+
+            LivingEntity livingSource = (LivingEntity) source;
+            LivingEntity livingTarget = (LivingEntity) target;
+            livingTarget.prevRenderYawOffset = livingSource.prevRenderYawOffset;
+            livingTarget.prevRotationYawHead = livingSource.prevRotationYawHead;
+            livingTarget.renderYawOffset = livingSource.renderYawOffset;
+            livingTarget.rotationYawHead = livingSource.rotationYawHead;
+        }
+    }
+
+    private static void drawEntityOnScreen(MatrixStack matrixstack, double posX, double posY, double posZ, float partialTicks, Entity entity, BiConsumer<IRenderTypeBuffer, Integer> renderName, Runnable invalidate) {
 
         matrixstack.push();
         matrixstack.translate(posX, posY, posZ);
@@ -357,12 +427,13 @@ public class EntityMenuContainer implements IStateContainer {
         RenderSystem.runAsFancy(() -> {
 
             Consumer<Entity> render = safeEntity -> entityrenderermanager.renderEntityStatic(entity, 0.0, 0.0, 0.0, 0.0F, partialTicks, matrixstack, irendertypebuffer, 15728880);
-            Consumer<Entity> orElse = safeEntity -> MenuEntityElement.get().addToBlacklist(safeEntity.getType());
-            if (!PuzzlesLibUtil.runOrElse(entity, render, orElse)) {
+            Consumer<Entity> orElse = safeEntity -> {
 
-                invalidation.run();
-            }
+                MenuEntityElement.get().addToBlacklist(safeEntity.getType());
+                invalidate.run();
+            };
 
+            PuzzlesLibUtil.runOrElse(entity, render, orElse);
             renderName.accept(irendertypebuffer, 15728880);
         });
 

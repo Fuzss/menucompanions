@@ -4,6 +4,7 @@ import com.fuzs.puzzleslib_mc.capability.CapabilityController;
 import com.fuzs.puzzleslib_mc.element.registry.ElementRegistry;
 import com.fuzs.puzzleslib_mc.network.NetworkHandler;
 import com.fuzs.puzzleslib_mc.registry.RegistryManager;
+import com.fuzs.puzzleslib_mc.util.PuzzlesLibUtil;
 import net.minecraftforge.fml.ExtensionPoint;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -14,10 +15,6 @@ import net.minecraftforge.fml.network.FMLNetworkConstants;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import javax.annotation.Nullable;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 @SuppressWarnings("unused")
 //@Mod(PuzzlesLib.MODID)
@@ -53,36 +50,37 @@ public class PuzzlesLib {
         ElementRegistry.load(evt);
     }
 
-    protected final void setClientSideOnly() {
+    /**
+     * set mod to only be required on one side, server or client
+     * works like <code>clientSideOnly</code> back in 1.12
+     */
+    protected final void setSideSideOnly() {
 
-        // clientSideOnly = true
         ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.DISPLAYTEST, () -> Pair.of(() -> FMLNetworkConstants.IGNORESERVERONLY, (remote, isServer) -> true));
     }
 
+    /**
+     * @return registry manager for puzzles lib mods
+     */
     public static RegistryManager getRegistryManager() {
 
-        return getOrElse(registryManager, RegistryManager::new, instance -> registryManager = instance);
+        return PuzzlesLibUtil.getOrElse(registryManager, RegistryManager::new, instance -> registryManager = instance);
     }
 
+    /**
+     * @return network handler for puzzles lib mods
+     */
     public static NetworkHandler getNetworkHandler() {
 
-        return getOrElse(networkHandler, NetworkHandler::new, instance -> networkHandler = instance);
+        return PuzzlesLibUtil.getOrElse(networkHandler, NetworkHandler::new, instance -> networkHandler = instance);
     }
 
+    /**
+     * @return capability controller for puzzles lib mods
+     */
     public static CapabilityController getCapabilityController() {
 
-        return getOrElse(capabilityController, CapabilityController::new, instance -> capabilityController = instance);
-    }
-
-    private static <T> T getOrElse(@Nullable T instance, Supplier<T> supplier, Consumer<T> consumer) {
-
-        if (instance == null) {
-
-            instance = supplier.get();
-            consumer.accept(instance);
-        }
-
-        return instance;
+        return PuzzlesLibUtil.getOrElse(capabilityController, CapabilityController::new, instance -> capabilityController = instance);
     }
 
 }

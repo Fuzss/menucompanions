@@ -15,7 +15,7 @@ import net.minecraftforge.fml.network.simple.SimpleChannel;
 import java.util.function.Supplier;
 
 /**
- * handler for network communications of all mods
+ * handler for network communications of all puzzles lib mods
  */
 @SuppressWarnings("unused")
 public class NetworkHandler {
@@ -23,11 +23,11 @@ public class NetworkHandler {
     /**
      * protocol version for testing client-server compatibility of this mod
      */
-    private final String PROTOCOL_VERSION = Integer.toString(1);
+    private static final String PROTOCOL_VERSION = Integer.toString(1);
     /**
      * channel for sending messages
      */
-    private final SimpleChannel MAIN_CHANNEL = NetworkRegistry.newSimpleChannel(new ResourceLocation(PuzzlesLib.MODID, "main_channel"),
+    private static final SimpleChannel MAIN_CHANNEL = NetworkRegistry.newSimpleChannel(new ResourceLocation(PuzzlesLib.MODID, "main_channel"),
             () -> PROTOCOL_VERSION, PROTOCOL_VERSION::equals, PROTOCOL_VERSION::equals);
 
     /**

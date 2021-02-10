@@ -57,10 +57,10 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
 
     private static final ResourceLocation RELOAD_TEXTURES = new ResourceLocation(MenuCompanions.MODID, "textures/gui/reload.png");
 
-    public final String jsonMobsName = "mobs.json";
     private final Minecraft mc = Minecraft.getInstance();
-    private MenuClientWorld renderWorld;
     private final EnumMap<MenuSide, EntityMenuContainer> menuSides = new EnumMap<>(MenuSide.class);
+    private MenuClientWorld renderWorld;
+    private int displayTimeCounter;
     private Consumer<UnaryOperator<List<String>>> addToBlacklist;
 
     // config settings
@@ -127,7 +127,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
                 .map(data -> (ConfigValueData<ForgeConfigSpec.ConfigValue<List<String>>, List<String>, ?>) data)
                 .ifPresent(data -> this.addToBlacklist = data::modifyConfigValue);
 
-        JsonConfigFileUtil.load(jsonMobsName, MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
+        JsonConfigFileUtil.getAllAndLoad(MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize, MenuEntityProvider::clear);
         if (this.createRenderWorld()) {
 
             this.menuSides.values().forEach(container -> container.setWorld(this.renderWorld));
@@ -160,7 +160,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
     @Override
     public void setupClientConfig(ForgeConfigSpec.Builder builder) {
 
-        addToConfig(builder.comment("Time in seconds an entity will be shown for. Set to 0 to never change entities.").defineInRange("Display Time", 0, 0, Integer.MAX_VALUE), v -> this.displayTime = v);
+        addToConfig(builder.comment("Time in seconds an entity will be shown for. Set to 0 to never change entities.").defineInRange("Display Time", 0, 0, Integer.MAX_VALUE), v -> this.displayTime = v, v -> v * 20);
         addToConfig(builder.comment("Size of menu companions.").defineInRange("Entity Size", 60, 0, Integer.MAX_VALUE), v -> this.entitySize = v);
         addToConfig(builder.comment("Offset on x-axis from original position on left side.").defineInRange("Left X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[0] = v);
         addToConfig(builder.comment("Offset on y-axis from original position on left side.").defineInRange("Left Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[1] = v);
@@ -168,7 +168,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
         addToConfig(builder.comment("Offset on y-axis from original position on right side.").defineInRange("Right Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[3] = v);
         addToConfig(builder.comment("Play ambient sounds when clicking on menu mobs.").define("Play Sounds", true), v -> this.playAmbientSounds = v);
         addToConfig(builder.comment("Volume of ambient sounds.").defineInRange("Sound Volume", 0.5, 0.0, 1.0), v -> this.soundVolume = v);
-        addToConfig(builder.comment("Hurt entity when clicked and there is no ambient sound to play.").define("Hurt Entity", true), v -> this.hurtEntity = v);
+        addToConfig(builder.comment("Hurt entity when clicked and there is no ambient sound to play.").define("Hurt Entity", false), v -> this.hurtEntity = v);
         addToConfig(builder.comment("Blacklist to prevent certain entities form rendering. Problematic entities will be added automatically upon being detected.").define("Entity Blacklist", ConfigManager.get().getKeyList(EntityType.ENDER_DRAGON, EntityType.EVOKER_FANGS, EntityType.FALLING_BLOCK, EntityType.AREA_EFFECT_CLOUD, EntityType.ITEM, EntityType.FISHING_BOBBER)), v -> this.entityBlacklist = v, v -> deserializeToSet(v, ForgeRegistries.ENTITIES));
         addToConfig(builder.comment("When to show reload button on main menu. By default requires the control key to be pressed.").defineEnum("Reload Button", ReloadMode.RIGHT_CONTROL), v -> this.reloadMode = v);
         addToConfig(builder.comment("Reload button offset on x-axis from original position.").defineInRange("Reload X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[4] = v);
@@ -197,9 +197,10 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
             int posY = parentWidget.y - this.buttonOffsets[5];
             addWidget.accept(new ImageButton(posX, posY, 20, 20, 0, 0, 20, RELOAD_TEXTURES, 32, 64, button -> {
 
-                JsonConfigFileUtil.load(this.jsonMobsName, MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize);
-                MenuCompanions.LOGGER.info("Reloaded config file at {}", this.jsonMobsName);
-                this.menuSides.values().forEach(EntityMenuContainer::invalidate);
+                this.displayTimeCounter = 0;
+                JsonConfigFileUtil.getAllAndLoad(MenuCompanions.MODID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize, MenuEntityProvider::clear);
+                MenuCompanions.LOGGER.info("Reloaded config files at {}", MenuCompanions.MODID);
+                this.menuSides.values().forEach(EntityMenuContainer::setUpdateRequired);
             }, new TranslationTextComponent("narrator.button.reload")) {
 
                 @Override
@@ -253,7 +254,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
 
         if (evt.getGui() instanceof MainMenuScreen) {
 
-            this.menuSides.values().forEach(EntityMenuContainer::invalidate);
+            this.menuSides.values().forEach(EntityMenuContainer::setUpdateRequired);
         }
     }
 
@@ -322,9 +323,16 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
 
         if (evt.phase != TickEvent.Phase.END && this.mc.currentScreen instanceof MainMenuScreen) {
 
+            if (this.displayTime > 0) {
+
+                this.displayTimeCounter++;
+                this.displayTimeCounter %= this.displayTime;
+            }
+
             this.menuSides.entrySet().stream()
-                    .filter(entry -> entry.getValue().isInvalid())
-                    .forEach(entry -> MenuEntityElement.this.setMenuSide(entry.getKey(), entry.getValue()));
+                    .filter(entry -> this.displayTime > 0 && this.displayTimeCounter == 0 || entry.getValue().isInvalid())
+                    .forEach(entry -> MenuEntityElement.this.setMenuSide(entry.getKey()));
+
             this.menuSides.values().forEach(EntityMenuContainer::tick);
         }
     }
@@ -338,7 +346,9 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
         }
     }
 
-    private void setMenuSide(MenuSide side, EntityMenuContainer container) {
+    private void setMenuSide(MenuSide side) {
+
+        EntityMenuContainer container = this.menuSides.get(side);
 
         // check if disabled via config
         if (container.isDisabled()) {
@@ -346,8 +356,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
             return;
         }
 
-        // limit max number of attempts
-        for (int i = 0; i < 5; i++) {
+        while (true) {
 
             EntityMenuEntry entry = MenuEntityProvider.getRandomEntry(side);
             if (entry == null) {
@@ -362,6 +371,9 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
                 container.createEntity(entity, entry, side == MenuSide.RIGHT);
                 return;
             }
+
+            // entity from entry can't be created, so remove the entry
+            MenuEntityProvider.removeEntry(entry);
         }
 
         container.setBroken();
