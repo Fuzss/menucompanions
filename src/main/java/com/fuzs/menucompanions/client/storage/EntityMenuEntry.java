@@ -32,9 +32,10 @@ public class EntityMenuEntry {
     private final boolean nameplate;
     private final boolean particles;
     private final int weight;
+    private final float volume;
     private final MenuEntityElement.MenuSide side;
 
-    public EntityMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityElement.MenuSide side) {
+    public EntityMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, float volume, MenuEntityElement.MenuSide side) {
 
         this.type = type;
         this.compound = compound;
@@ -45,6 +46,7 @@ public class EntityMenuEntry {
         this.nameplate = nameplate;
         this.particles = particles;
         this.weight = weight;
+        this.volume = volume;
         this.side = side;
     }
 
@@ -129,6 +131,11 @@ public class EntityMenuEntry {
         return this.weight;
     }
 
+    public float getSoundVolume() {
+
+        return this.volume;
+    }
+
     public boolean isSide(MenuEntityElement.MenuSide side) {
 
         return this.side == MenuEntityElement.MenuSide.BOTH || this.side == side;
@@ -141,7 +148,7 @@ public class EntityMenuEntry {
 
     public boolean isWalking() {
 
-        return PropertyFlag.readProperty(this.data, PropertyFlag.WALKING);
+        return PropertyFlag.readProperty(this.data, PropertyFlag.WALK);
     }
 
     public boolean isInLove() {
@@ -161,7 +168,7 @@ public class EntityMenuEntry {
                 ((MobEntity) entity).setAggroed(true);
             }
 
-            if (PropertyFlag.readProperty(this.data, PropertyFlag.CROUCHING)) {
+            if (PropertyFlag.readProperty(this.data, PropertyFlag.CROUCH)) {
 
                 entity.setPose(Pose.CROUCHING);
             }
@@ -208,6 +215,7 @@ public class EntityMenuEntry {
 
         jsonobject.addProperty("nameplate", this.nameplate);
         jsonobject.addProperty("particles", this.particles);
+        jsonobject.addProperty("volume", this.volume);
         IEntrySerializer.serializeEnum(jsonobject, "side", this.side);
 
         return jsonobject;

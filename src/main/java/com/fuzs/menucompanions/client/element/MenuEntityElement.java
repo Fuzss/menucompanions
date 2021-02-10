@@ -76,7 +76,6 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
      */
     private final int[] buttonOffsets = new int[6];
     private boolean playAmbientSounds;
-    private double soundVolume;
     private boolean hurtEntity;
     private Set<EntityType<?>> entityBlacklist;
     private ReloadMode reloadMode;
@@ -167,7 +166,6 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
         addToConfig(builder.comment("Offset on x-axis from original position on right side.").defineInRange("Right X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[2] = v);
         addToConfig(builder.comment("Offset on y-axis from original position on right side.").defineInRange("Right Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[3] = v);
         addToConfig(builder.comment("Play ambient sounds when clicking on menu mobs.").define("Play Sounds", true), v -> this.playAmbientSounds = v);
-        addToConfig(builder.comment("Volume of ambient sounds.").defineInRange("Sound Volume", 0.5, 0.0, 1.0), v -> this.soundVolume = v);
         addToConfig(builder.comment("Hurt entity when clicked and there is no ambient sound to play.").define("Hurt Entity", false), v -> this.hurtEntity = v);
         addToConfig(builder.comment("Blacklist to prevent certain entities form rendering. Problematic entities will be added automatically upon being detected.").define("Entity Blacklist", ConfigManager.get().getKeyList(EntityType.ENDER_DRAGON, EntityType.EVOKER_FANGS, EntityType.FALLING_BLOCK, EntityType.AREA_EFFECT_CLOUD, EntityType.ITEM, EntityType.FISHING_BOBBER)), v -> this.entityBlacklist = v, v -> deserializeToSet(v, ForgeRegistries.ENTITIES));
         addToConfig(builder.comment("When to show reload button on main menu. By default requires the control key to be pressed.").defineEnum("Reload Button", ReloadMode.RIGHT_CONTROL), v -> this.reloadMode = v);
@@ -276,37 +274,39 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
     private void onMouseClicked(final GuiScreenEvent.MouseClickedEvent.Post evt) {
 
         // left mouse button, same as when activating buttons
-        if (evt.getButton() == 0 && this.playAmbientSounds) {
+        if (evt.getButton() == 0) {
 
             // check if mouse button has been pressed in a certain area
-            if (this.playSoundLeftSide(evt.getGui().width, evt.getGui().height, evt.getMouseX(), evt.getMouseY()) || this.playSoundRightSide(evt.getGui().width, evt.getGui().height, evt.getMouseX(), evt.getMouseY())) {
+            Consumer<EntityMenuContainer> interaction = container -> container.interactWithEntity(this.mc.getSoundHandler(), this.playAmbientSounds, this.hurtEntity);
+            if (this.clickLeftSide(evt.getGui().width, evt.getGui().height, evt.getMouseX(), evt.getMouseY(), interaction) ||
+                    this.clickRightSide(evt.getGui().width, evt.getGui().height, evt.getMouseX(), evt.getMouseY(), interaction)) {
 
                 evt.setCanceled(true);
             }
         }
     }
 
-    private boolean playSoundLeftSide(int width, int height, double mouseX, double mouseY) {
+    private boolean clickLeftSide(int width, int height, double mouseX, double mouseY, Consumer<EntityMenuContainer> interaction) {
 
         int posX = (width / 2 - 96) / 2 - this.entitySize / 2 + this.buttonOffsets[0];
         int posY = height / 4 + 48 + 80 - this.entitySize * 4 / 3 - this.buttonOffsets[1];
 
-        return this.playSoundAtSide(MenuSide.LEFT, posX, posY, mouseX, mouseY);
+        return this.interactAtSide(MenuSide.LEFT, posX, posY, mouseX, mouseY, interaction);
     }
 
-    private boolean playSoundRightSide(int width, int height, double mouseX, double mouseY) {
+    private boolean clickRightSide(int width, int height, double mouseX, double mouseY, Consumer<EntityMenuContainer> interaction) {
 
         int posX = width - ((width / 2 - 96) / 2 + this.entitySize / 2 + this.buttonOffsets[2]);
         int posY = height / 4 + 48 + 80 - this.entitySize * 4 / 3 - this.buttonOffsets[3];
 
-        return this.playSoundAtSide(MenuSide.RIGHT, posX, posY, mouseX, mouseY);
+        return this.interactAtSide(MenuSide.RIGHT, posX, posY, mouseX, mouseY, interaction);
     }
 
-    private boolean playSoundAtSide(MenuSide side, int posX, int posY, double mouseX, double mouseY) {
+    private boolean interactAtSide(MenuSide side, int posX, int posY, double mouseX, double mouseY, Consumer<EntityMenuContainer> interaction) {
 
         if (isPointInRegion(posX, posY, this.entitySize, this.entitySize * 4 / 3, mouseX, mouseY)) {
 
-            this.menuSides.get(side).playLivingSound(this.mc.getSoundHandler(), (float) this.soundVolume, this.hurtEntity);
+            interaction.accept(this.menuSides.get(side));
 
             return true;
         }

@@ -25,6 +25,7 @@ public class MenuEntryBuilder {
     private boolean nameplate = false;
     private boolean particles = true;
     private int weight = 1;
+    private float volume = 0.5F;
     private MenuEntityElement.MenuSide side = MenuEntityElement.MenuSide.BOTH;
     private String profile = "";
     private byte modelParts = 127;
@@ -47,10 +48,10 @@ public class MenuEntryBuilder {
 
         if (this.type == EntityType.PLAYER) {
 
-            return new PlayerMenuEntry(this.type, compound, this.data, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.side, this.profile, this.modelParts);
+            return new PlayerMenuEntry(this.type, compound, this.data, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.volume, this.side, this.profile, this.modelParts);
         }
 
-        return new EntityMenuEntry(this.type, compound, this.data, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.side);
+        return new EntityMenuEntry(this.type, compound, this.data, this.scale, this.xOffset, this.yOffset, this.nameplate, this.particles, this.weight, this.volume, this.side);
     }
 
     public MenuEntryBuilder setType(EntityType<?> type) {
@@ -68,6 +69,12 @@ public class MenuEntryBuilder {
     public MenuEntryBuilder setData(byte data) {
 
         this.data = data;
+        return this;
+    }
+
+    public MenuEntryBuilder setData(PropertyFlag... flags) {
+
+        this.data = new PropertyFlag.Builder().addAll(flags).get();
         return this;
     }
 
@@ -116,6 +123,12 @@ public class MenuEntryBuilder {
     public MenuEntryBuilder setWeight(int weight) {
 
         this.weight = weight;
+        return this;
+    }
+
+    public MenuEntryBuilder setVolume(float volume) {
+
+        this.volume = volume;
         return this;
     }
 
@@ -175,6 +188,7 @@ public class MenuEntryBuilder {
             builder.setWeight(JSONUtils.getInt(jsonobject, "weight"));
             builder.setNameplate(JSONUtils.getBoolean(displayobject, "nameplate"));
             builder.setParticles(JSONUtils.getBoolean(displayobject, "particles"));
+            builder.setVolume(JSONUtils.getFloat(displayobject, "volume"));
             builder.setSide(IEntrySerializer.deserializeEnum(displayobject, "side", MenuEntityElement.MenuSide.class, MenuEntityElement.MenuSide.BOTH));
             builder.setData((byte) IEntrySerializer.deserializeEnumProperties(dataobject, PropertyFlag.class, PropertyFlag::toString, PropertyFlag::getPropertyMask));
             if (type != null) {

@@ -25,6 +25,7 @@ import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.passive.BeeEntity;
 import net.minecraft.particles.ParticleTypes;
 import net.minecraft.util.DamageSource;
+import net.minecraft.util.Hand;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.vector.Matrix4f;
@@ -62,6 +63,7 @@ public class EntityMenuContainer implements IStateContainer {
     private int yOffset;
     private boolean nameplate;
     private boolean particles;
+    private float volume;
 
     public EntityMenuContainer(Minecraft mc) {
 
@@ -126,6 +128,7 @@ public class EntityMenuContainer implements IStateContainer {
         this.yOffset = -entry.getYOffset();
         this.nameplate = entry.showNameplate();
         this.particles = entry.showParticles();
+        this.volume = entry.getSoundVolume();
     }
 
     public void tick() {
@@ -280,7 +283,7 @@ public class EntityMenuContainer implements IStateContainer {
         }
     }
 
-    public void playLivingSound(SoundHandler handler, float volume, boolean hurtEntity) {
+    public void interactWithEntity(SoundHandler handler, boolean playAmbientSounds, boolean hurtEntity) {
 
         if (this.isNotEnabled()) {
 
@@ -294,23 +297,29 @@ public class EntityMenuContainer implements IStateContainer {
             return;
         }
 
-        LivingEntity livingEntity = (LivingEntity) entities.get((int) (entities.size() * Math.random()));
-        if (livingEntity instanceof MobEntity) {
+        LivingEntity livingEntity = (LivingEntity) entities.get(this.world.rand.nextInt(entities.size()));
+        if (playAmbientSounds && livingEntity instanceof MobEntity) {
 
             SoundEvent ambientSound = ((IMobEntityAccessor) livingEntity).callGetAmbientSound();
-            if (this.playLivingSound(handler, livingEntity, ambientSound, volume)) {
+            if (this.playLivingSound(handler, livingEntity, ambientSound, this.volume)) {
 
                 return;
             }
         }
 
-        if (hurtEntity && livingEntity.hurtTime == 0) {
+        if (hurtEntity) {
 
-            livingEntity.hurtTime = 10;
-            livingEntity.limbSwingAmount = 1.5F;
-            this.spawnDamageParticles(livingEntity);
-            SoundEvent hurtSound = ((ILivingEntityAccessor) livingEntity).callGetHurtSound(DamageSource.GENERIC);
-            this.playLivingSound(handler, livingEntity, hurtSound, volume);
+            if (livingEntity.hurtTime == 0) {
+
+                livingEntity.hurtTime = 10;
+                livingEntity.limbSwingAmount = 1.5F;
+                this.spawnDamageParticles(livingEntity);
+                SoundEvent hurtSound = ((ILivingEntityAccessor) livingEntity).callGetHurtSound(DamageSource.GENERIC);
+                this.playLivingSound(handler, livingEntity, hurtSound, this.volume);
+            }
+        } else if (!livingEntity.isSwingInProgress) {
+
+            livingEntity.swingArm(Hand.MAIN_HAND);
         }
     }
 

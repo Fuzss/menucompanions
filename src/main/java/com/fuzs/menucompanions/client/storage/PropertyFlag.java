@@ -1,14 +1,16 @@
 package com.fuzs.menucompanions.client.storage;
 
+import java.util.stream.Stream;
+
 public enum PropertyFlag {
 
     TICK("tick"),
-    ON_GROUND("ground"),
-    IN_WATER("water"),
+    ON_GROUND("onground"),
+    IN_WATER("inwater"),
     AGGRESSIVE("aggressive"),
-    WALKING("walking"),
-    IN_LOVE("love"),
-    CROUCHING("crouching");
+    IN_LOVE("inlove"),
+    WALK("walk"),
+    CROUCH("crouch");
 
     private final int identifier = 1 << this.ordinal();
     private final String name;
@@ -55,6 +57,12 @@ public enum PropertyFlag {
         public Builder add(PropertyFlag flag) {
 
             this.data |= flag.identifier;
+            return this;
+        }
+
+        public Builder addAll(PropertyFlag... flags) {
+
+            Stream.of(flags).forEach(this::add);
             return this;
         }
 

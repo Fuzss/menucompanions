@@ -21,9 +21,9 @@ public class PlayerMenuEntry extends EntityMenuEntry {
     private final String profile;
     private final byte modelParts;
 
-    public PlayerMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, MenuEntityElement.MenuSide side, String profile, byte modelParts) {
+    public PlayerMenuEntry(@Nullable EntityType<?> type, CompoundNBT compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, float volume, MenuEntityElement.MenuSide side, String profile, byte modelParts) {
 
-        super(type, compound, data, scale, xOffset, yOffset, nameplate, particles, weight, side);
+        super(type, compound, data, scale, xOffset, yOffset, nameplate, particles, weight, volume, side);
         this.profile = profile;
         this.modelParts = modelParts;
     }
@@ -36,7 +36,7 @@ public class PlayerMenuEntry extends EntityMenuEntry {
 
             entity.setOnGround(PropertyFlag.readProperty(this.data, PropertyFlag.ON_GROUND));
             ((IEntityAccessor) entity).setInWater(PropertyFlag.readProperty(this.data, PropertyFlag.IN_WATER));
-            if (PropertyFlag.readProperty(this.data, PropertyFlag.CROUCHING)) {
+            if (PropertyFlag.readProperty(this.data, PropertyFlag.CROUCH)) {
 
                 entity.setPose(Pose.CROUCHING);
             }
