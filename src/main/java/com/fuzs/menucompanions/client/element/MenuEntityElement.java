@@ -3,7 +3,7 @@ package com.fuzs.menucompanions.client.element;
 import com.fuzs.menucompanions.MenuCompanions;
 import com.fuzs.menucompanions.MenuCompanionsElements;
 import com.fuzs.menucompanions.client.gui.EntityMenuContainer;
-import com.fuzs.menucompanions.client.storage.EntityMenuEntry;
+import com.fuzs.menucompanions.client.storage.entry.EntityMenuEntry;
 import com.fuzs.menucompanions.client.storage.MenuEntityProvider;
 import com.fuzs.menucompanions.client.util.ReloadMode;
 import com.fuzs.menucompanions.client.world.MenuClientWorld;
@@ -160,7 +160,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
         addToConfig(builder.comment("Play ambient sounds when clicking on menu mobs.").define("Play Sounds", true), v -> this.playAmbientSounds = v);
         addToConfig(builder.comment("Hurt entity when clicked and there is no ambient sound to play.").define("Hurt Entity", false), v -> this.hurtEntity = v);
         addToConfig(builder.comment("Blacklist to prevent certain entities form rendering. Problematic entities will be added automatically upon being detected.").define("Entity Blacklist", ConfigManager.get().getKeyList(EntityType.ENDER_DRAGON, EntityType.EVOKER_FANGS, EntityType.FALLING_BLOCK, EntityType.AREA_EFFECT_CLOUD, EntityType.ITEM, EntityType.FISHING_BOBBER)), v -> this.entityBlacklist = v, v -> deserializeToSet(v, ForgeRegistries.ENTITIES));
-        addToConfig(builder.comment("When to show reload button on main menu. By default requires the control key to be pressed.").defineEnum("Reload Button", ReloadMode.RIGHT_CONTROL), v -> this.reloadMode = v);
+        addToConfig(builder.comment("When to show reload button on main menu. By default requires the control key to be pressed.").defineEnum("Reload Button", ReloadMode.RIGHT_ALWAYS), v -> this.reloadMode = v);
         addToConfig(builder.comment("Reload button offset on x-axis from original position.").defineInRange("Reload X-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[4] = v);
         addToConfig(builder.comment("Reload button offset on y-axis from original position.").defineInRange("Reload Y-Offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.buttonOffsets[5] = v);
         addToConfig(builder.comment("Which side entities can be shown at.").defineEnum("Entity Side", MenuSide.BOTH), v -> {

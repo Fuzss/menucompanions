@@ -1,4 +1,4 @@
-package com.fuzs.menucompanions.client.storage;
+package com.fuzs.menucompanions.client.storage.entry;
 
 import java.util.stream.Stream;
 
