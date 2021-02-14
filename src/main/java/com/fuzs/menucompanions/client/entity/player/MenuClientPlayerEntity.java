@@ -8,8 +8,7 @@ import net.minecraft.network.play.server.SPlayerListItemPacket;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.world.GameType;
 
-import javax.annotation.Nonnull;
-
+@SuppressWarnings("NullableProblems")
 public class MenuClientPlayerEntity extends RemoteClientPlayerEntity {
 
     private NetworkPlayerInfo playerInfo;
@@ -42,7 +41,6 @@ public class MenuClientPlayerEntity extends RemoteClientPlayerEntity {
         return false;
     }
 
-    @Nonnull
     @Override
     public ITextComponent getName() {
 
@@ -56,6 +54,13 @@ public class MenuClientPlayerEntity extends RemoteClientPlayerEntity {
 
             return super.getName();
         }
+    }
+
+    @Override
+    public ITextComponent getDisplayName() {
+
+        // override for compatibility with Fabrication mod
+        return this.getName();
     }
 
     @SuppressWarnings("ConstantConditions")

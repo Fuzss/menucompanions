@@ -113,8 +113,9 @@ public class CreateEntityUtil {
     @Nullable
     public static Entity create(MenuClientWorld worldIn, EntityType<?> type) {
 
-        if (type == EntityType.PLAYER && gameProfile != null) {
+        if (type == EntityType.PLAYER) {
 
+            assert gameProfile != null : "No game profile found";
             return new MenuClientPlayerEntity(worldIn, gameProfile);
         }
 
