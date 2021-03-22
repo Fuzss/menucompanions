@@ -263,7 +263,7 @@ public class MenuEntityElement extends AbstractElement implements IClientElement
     private void onMouseClicked(final GuiScreenEvent.MouseClickedEvent.Post evt) {
 
         // left mouse button, same as when activating buttons
-        if (evt.getButton() == 0) {
+        if (evt.getGui() instanceof MainMenuScreen && evt.getButton() == 0) {
 
             // check if mouse button has been pressed in a certain area
             Consumer<EntityMenuContainer> interaction = container -> container.interactWithEntity(this.mc.getSoundHandler(), this.playAmbientSounds, this.hurtEntity);
