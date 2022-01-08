@@ -1,17 +1,17 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "compatibilityLevel": "JAVA_8",
-  "package": "com.fuzs.menucompanions.mixin",
-  "refmap": "menucompanions.refmap.json",
+  "compatibilityLevel": "JAVA_17",
+  "package": "fuzs.menucompanions.mixin",
+  "refmap": "META-INF/menucompanions.refmap.json",
   "mixins": [
   ],
   "client": [
-    "client.accessor.IParticleManagerAccessor",
-    "client.accessor.IEntityAccessor",
+    "client.accessor.EntityAccessor",
+    "client.accessor.ParticleEngineAccessor",
+    "client.accessor.PlayerAccessor",
     "client.accessor.IMobEntityAccessor",
     "client.accessor.ILivingEntityAccessor",
-    "client.accessor.IPlayerEntityAccessor",
     "client.accessor.IActiveRenderInfoAccessor"
   ],
   "injectors": {
