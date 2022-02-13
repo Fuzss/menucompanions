@@ -1,4 +1,4 @@
-package fuzs.menucompanions.client.data;
+package fuzs.menucompanions.data;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
@@ -6,7 +6,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.gson.JsonElement;
 import fuzs.menucompanions.MenuCompanions;
-import fuzs.menucompanions.client.data.entry.MobMenuData;
+import fuzs.menucompanions.data.entry.MobMenuData;
 import fuzs.menucompanions.config.ClientConfig;
 import fuzs.puzzleslib.json.JsonConfigFileUtil;
 import fuzs.puzzleslib.util.PuzzlesUtil;

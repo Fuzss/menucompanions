@@ -1,12 +1,12 @@
-package fuzs.menucompanions.client.data;
+package fuzs.menucompanions.data;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import fuzs.menucompanions.MenuCompanions;
-import fuzs.menucompanions.client.data.entry.MobMenuData;
-import fuzs.menucompanions.client.data.entry.MobDataFlag;
-import fuzs.menucompanions.client.data.entry.PlayerMenuData;
-import fuzs.menucompanions.client.util.EntrySerializer;
+import fuzs.menucompanions.data.entry.MobMenuData;
+import fuzs.menucompanions.data.entry.MobDataFlag;
+import fuzs.menucompanions.data.entry.PlayerMenuData;
+import fuzs.menucompanions.util.EntrySerializer;
 import fuzs.menucompanions.config.ClientConfig;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.GsonHelper;

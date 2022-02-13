@@ -1,11 +1,9 @@
 package fuzs.menucompanions.client;
 
 import fuzs.menucompanions.MenuCompanions;
-import fuzs.menucompanions.client.data.MenuEntityProvider;
-import fuzs.menucompanions.client.player.MenuPlayer;
 import fuzs.menucompanions.client.handler.MenuMobHandler;
 import fuzs.menucompanions.client.handler.ReloadButtonHandler;
-import fuzs.puzzleslib.json.JsonConfigFileUtil;
+import fuzs.menucompanions.client.player.MenuPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -19,23 +17,13 @@ import net.minecraftforge.fml.event.lifecycle.FMLConstructModEvent;
 public class MenuCompanionsClient {
     @SubscribeEvent
     public static void onConstructMod(final FMLConstructModEvent evt) {
-        registerHandlers$construct();
-    }
-
-    private static void registerHandlers$construct() {
-        final ReloadButtonHandler reloadButtonHandler = new ReloadButtonHandler();
-        MinecraftForge.EVENT_BUS.addListener(reloadButtonHandler::onInitScreen);
-    }
-
-    @SubscribeEvent
-    public static void onClientSetup(final FMLClientSetupEvent evt) {
-        MenuMobHandler.INSTANCE.loadMobData();
-        if (!MenuMobHandler.INSTANCE.loadLevel()) return;
-        registerHandlers$setup();
+        registerHandlers();
         registerModCompat();
     }
 
-    private static void registerHandlers$setup() {
+    private static void registerHandlers() {
+        final ReloadButtonHandler reloadButtonHandler = new ReloadButtonHandler();
+        MinecraftForge.EVENT_BUS.addListener(reloadButtonHandler::onInitScreen);
         MinecraftForge.EVENT_BUS.addListener(MenuMobHandler.INSTANCE::onScreenOpen);
         MinecraftForge.EVENT_BUS.addListener(MenuMobHandler.INSTANCE::onDrawScreen);
         MinecraftForge.EVENT_BUS.addListener(MenuMobHandler.INSTANCE::onMouseClicked);
@@ -51,5 +39,10 @@ public class MenuCompanionsClient {
         MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, true, (RenderPlayerEvent.Pre evt) -> {
             if (evt.getPlayer() instanceof MenuPlayer) evt.setCanceled(false);
         });
+    }
+
+    @SubscribeEvent
+    public static void onClientSetup(final FMLClientSetupEvent evt) {
+        MenuMobHandler.INSTANCE.loadMobData();
     }
 }

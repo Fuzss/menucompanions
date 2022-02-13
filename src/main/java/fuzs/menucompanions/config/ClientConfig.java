@@ -24,8 +24,9 @@ public class ClientConfig extends AbstractConfig {
     public boolean hurtEntity;
     private List<String> entityBlacklistRaw;
     public ReloadMode reloadMode;
-    private MenuSide entitySide;
+    public MenuSide entitySide;
     private List<String> defaultMobsRaw;
+    public boolean onlyPauseScreen;
 
     public Set<EntityType<?>> entityBlacklist;
     public Set<EntityType<?>> defaultMobs;
@@ -52,14 +53,13 @@ public class ClientConfig extends AbstractConfig {
         saveCallback.accept(builder.comment("Reload button offset on y-axis from original position.").defineInRange("reload_y_offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.reloadOffsets[1] = v);
         saveCallback.accept(builder.comment("Choose which side menu companions can be shown at.").defineEnum("entity_side", ClientConfig.MenuSide.BOTH), v -> this.entitySide = v);
         saveCallback.accept(builder.comment("Mobs to initially generate json config files for so their values can be further customized. They will only be generated when no config files are found.", "When this option is left blank, an internal set of default mobs will be generated instead.").define("default_mobs", Lists.<String>newArrayList()),v -> this.defaultMobsRaw = v);
+        saveCallback.accept(builder.comment("Only show mobs on pause screen and not within sub menus.", "Mobs can only be shown on sub screens when there is enough room.").define("only_pause_screen", false), v -> this.onlyPauseScreen = v);
     }
 
     @Override
     protected void afterConfigReload() {
         this.entityBlacklist = EntryCollectionBuilder.of(ForgeRegistries.ENTITIES).buildSet(this.entityBlacklistRaw);
         this.defaultMobs = EntryCollectionBuilder.of(ForgeRegistries.ENTITIES).buildSet(this.defaultMobsRaw);
-        MenuMobHandler.INSTANCE.enableEntityRenderer(MenuSide.LEFT, this.entitySide != MenuSide.RIGHT);
-        MenuMobHandler.INSTANCE.enableEntityRenderer(MenuSide.RIGHT, this.entitySide != MenuSide.LEFT);
     }
 
     public enum ReloadMode {
@@ -71,8 +71,16 @@ public class ClientConfig extends AbstractConfig {
 
         public int index() {
             return switch (this) {
-                case RIGHT -> 2;
                 case LEFT -> 0;
+                case RIGHT -> 1;
+                case BOTH -> -1;
+            };
+        }
+
+        public int offsetsIndex() {
+            return switch (this) {
+                case LEFT -> 0;
+                case RIGHT -> 2;
                 case BOTH -> -1;
             };
         }

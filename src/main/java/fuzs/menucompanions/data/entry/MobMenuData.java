@@ -1,9 +1,9 @@
-package fuzs.menucompanions.client.data.entry;
+package fuzs.menucompanions.data.entry;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import fuzs.menucompanions.client.util.EntityFactory;
-import fuzs.menucompanions.client.util.EntrySerializer;
+import fuzs.menucompanions.util.EntityFactory;
+import fuzs.menucompanions.util.EntrySerializer;
 import fuzs.menucompanions.client.multiplayer.MenuClientLevel;
 import fuzs.menucompanions.config.ClientConfig;
 import fuzs.menucompanions.mixin.client.accessor.EntityAccessor;

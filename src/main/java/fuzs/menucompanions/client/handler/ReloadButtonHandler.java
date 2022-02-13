@@ -2,9 +2,8 @@ package fuzs.menucompanions.client.handler;
 
 import com.google.common.collect.ImmutableList;
 import fuzs.menucompanions.MenuCompanions;
-import fuzs.menucompanions.client.data.MenuEntityProvider;
+import fuzs.menucompanions.data.MenuEntityProvider;
 import fuzs.menucompanions.config.ClientConfig;
-import fuzs.puzzleslib.json.JsonConfigFileUtil;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.components.events.GuiEventListener;
@@ -44,8 +43,8 @@ public class ReloadButtonHandler {
 
     @Nullable
     private AbstractWidget getReloadParentWidget(List<GuiEventListener> listeners, ClientConfig.ReloadMode reloadMode) {
-        List<String> leftSide = ImmutableList.of("narrator.button.language", "menu.options", "fml.menu.mods", "menu.multiplayer");
-        List<String> rightSide = ImmutableList.of("narrator.button.accessibility", "menu.quit", "menu.online", "menu.multiplayer");
+        List<String> leftSide = ImmutableList.of("menu.options", "menu.sendFeedback", "gui.advancements", "menu.returnToMenu", "menu.disconnect");
+        List<String> rightSide = ImmutableList.of("menu.shareToLan", "menu.reportBugs", "gui.stats", "menu.returnToMenu", "menu.disconnect");
         for (String key : reloadMode == ClientConfig.ReloadMode.LEFT ? leftSide : rightSide) {
             AbstractWidget parentWidget = this.getWidgetByTranslation(listeners, key);
             if (parentWidget != null) {

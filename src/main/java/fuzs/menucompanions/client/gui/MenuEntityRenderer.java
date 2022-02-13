@@ -7,7 +7,7 @@ import com.mojang.math.Matrix4f;
 import com.mojang.math.Quaternion;
 import com.mojang.math.Vector3f;
 import fuzs.menucompanions.MenuCompanions;
-import fuzs.menucompanions.client.data.entry.MobMenuData;
+import fuzs.menucompanions.data.entry.MobMenuData;
 import fuzs.menucompanions.client.handler.MenuEntityBlacklist;
 import fuzs.menucompanions.client.multiplayer.MenuClientLevel;
 import fuzs.menucompanions.client.particle.MenuParticleEngine;

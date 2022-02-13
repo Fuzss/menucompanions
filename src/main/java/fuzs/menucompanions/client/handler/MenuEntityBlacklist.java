@@ -34,7 +34,7 @@ public class MenuEntityBlacklist {
                 entityBlacklist.set(list);
             }
         } else {
-            MenuCompanions.LOGGER.warn("unable to modify blacklist, config value not set");
+            MenuCompanions.LOGGER.warn("Unable to modify blacklist, config value not set");
         }
     }
 }

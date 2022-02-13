@@ -1,4 +1,4 @@
-package fuzs.menucompanions.client.data.entry;
+package fuzs.menucompanions.data.entry;
 
 import java.util.Locale;
 

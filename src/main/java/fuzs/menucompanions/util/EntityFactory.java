@@ -1,4 +1,4 @@
-package fuzs.menucompanions.client.util;
+package fuzs.menucompanions.util;
 
 import com.mojang.authlib.GameProfile;
 import fuzs.menucompanions.MenuCompanions;

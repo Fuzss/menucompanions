@@ -1,4 +1,4 @@
-package fuzs.menucompanions.client.util;
+package fuzs.menucompanions.util;
 
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
