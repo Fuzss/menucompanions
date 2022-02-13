@@ -1,10 +1,10 @@
-package fuzs.menucompanions.client.storage.entry;
+package fuzs.menucompanions.client.data.entry;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import fuzs.menucompanions.client.util.CreateEntityUtil;
+import fuzs.menucompanions.client.util.EntityFactory;
 import fuzs.menucompanions.client.util.EntrySerializer;
-import fuzs.menucompanions.client.world.MenuClientWorld;
+import fuzs.menucompanions.client.multiplayer.MenuClientLevel;
 import fuzs.menucompanions.config.ClientConfig;
 import fuzs.menucompanions.mixin.client.accessor.EntityAccessor;
 import fuzs.menucompanions.mixin.client.accessor.PlayerAccessor;
@@ -16,7 +16,7 @@ import net.minecraft.world.entity.player.PlayerModelPart;
 
 import javax.annotation.Nullable;
 
-public class PlayerMenuData extends EntityMenuData {
+public class PlayerMenuData extends MobMenuData {
     private final String profile;
     private final byte modelParts;
 
@@ -28,15 +28,15 @@ public class PlayerMenuData extends EntityMenuData {
 
     @Override
     @Nullable
-    public Entity create(MenuClientWorld worldIn) {
-        CreateEntityUtil.setGameProfile(this.profile);
-        return CreateEntityUtil.loadEntity(EntityType.PLAYER, this.compound, worldIn, entity -> {
-            entity.setOnGround(MenuPropertyFlags.readProperty(this.data, MenuPropertyFlags.ON_GROUND));
-            ((EntityAccessor) entity).setWasTouchingWater(MenuPropertyFlags.readProperty(this.data, MenuPropertyFlags.IN_WATER));
-            if (MenuPropertyFlags.readProperty(this.data, MenuPropertyFlags.CROUCH)) {
+    public Entity create(MenuClientLevel worldIn) {
+        EntityFactory.setGameProfile(this.profile);
+        return EntityFactory.loadEntity(EntityType.PLAYER, this.compound, worldIn, entity -> {
+            entity.setOnGround(MobDataFlag.readProperty(this.data, MobDataFlag.ON_GROUND));
+            ((EntityAccessor) entity).setWasTouchingWater(MobDataFlag.readProperty(this.data, MobDataFlag.IN_WATER));
+            if (MobDataFlag.readProperty(this.data, MobDataFlag.CROUCH)) {
                 entity.setPose(Pose.CROUCHING);
             }
-            CreateEntityUtil.readMobData(entity, this.compound);
+            EntityFactory.readMobData(entity, this.compound);
             entity.getEntityData().set(PlayerAccessor.getPlayerModelData(), this.modelParts);
             return entity;
         });

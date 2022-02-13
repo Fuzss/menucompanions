@@ -1,14 +1,12 @@
 package fuzs.menucompanions.mixin.client.accessor;
 
-import net.minecraft.entity.MobEntity;
-import net.minecraft.util.SoundEvent;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.entity.Mob;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-@Mixin(MobEntity.class)
-public interface IMobEntityAccessor {
-
+@Mixin(Mob.class)
+public interface MobAccessor {
     @Invoker
     SoundEvent callGetAmbientSound();
-
 }

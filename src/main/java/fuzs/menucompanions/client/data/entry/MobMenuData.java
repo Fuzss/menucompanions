@@ -1,10 +1,10 @@
-package fuzs.menucompanions.client.storage.entry;
+package fuzs.menucompanions.client.data.entry;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import fuzs.menucompanions.client.util.CreateEntityUtil;
+import fuzs.menucompanions.client.util.EntityFactory;
 import fuzs.menucompanions.client.util.EntrySerializer;
-import fuzs.menucompanions.client.world.MenuClientWorld;
+import fuzs.menucompanions.client.multiplayer.MenuClientLevel;
 import fuzs.menucompanions.config.ClientConfig;
 import fuzs.menucompanions.mixin.client.accessor.EntityAccessor;
 import net.minecraft.nbt.CompoundTag;
@@ -15,7 +15,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class EntityMenuData {
+public class MobMenuData {
     public static final String DISPLAY_FLAG = "display";
     public static final String DATA_FLAG = "data";
     public static final String PLAYER_FLAG = "player";
@@ -34,7 +34,7 @@ public class EntityMenuData {
     private final float volume;
     private final ClientConfig.MenuSide side;
 
-    public EntityMenuData(@Nullable EntityType<?> type, CompoundTag compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, float volume, ClientConfig.MenuSide side) {
+    public MobMenuData(@Nullable EntityType<?> type, CompoundTag compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, float volume, ClientConfig.MenuSide side) {
         this.type = type;
         this.compound = compound;
         this.data = data;
@@ -48,19 +48,13 @@ public class EntityMenuData {
         this.side = side;
     }
 
-    private boolean isTypeSet() {
-        return this.type != null;
-    }
-
     @Nullable
     public EntityType<?> getRawType() {
         return this.type;
     }
 
     public float calculateScale(Entity entity) {
-        if (this.isTypeSet()) {
-            return this.scale;
-        }
+        if (this.type != null) return this.scale;
         return calculateScale(entity.getBbWidth(), entity.getBbHeight());
     }
 
@@ -118,43 +112,39 @@ public class EntityMenuData {
     }
 
     public boolean tick() {
-        return MenuPropertyFlags.readProperty(this.data, MenuPropertyFlags.TICK);
+        return MobDataFlag.readProperty(this.data, MobDataFlag.TICK);
     }
 
     public boolean walking() {
-        return MenuPropertyFlags.readProperty(this.data, MenuPropertyFlags.WALK);
+        return MobDataFlag.readProperty(this.data, MobDataFlag.WALK);
     }
 
     public boolean inLove() {
-        return MenuPropertyFlags.readProperty(this.data, MenuPropertyFlags.IN_LOVE);
+        return MobDataFlag.readProperty(this.data, MobDataFlag.IN_LOVE);
     }
 
     @Nullable
-    public Entity create(MenuClientWorld worldIn) {
-        return CreateEntityUtil.loadEntity(this.getEntityType(), this.compound, worldIn, entity -> {
-            entity.setOnGround(MenuPropertyFlags.readProperty(this.data, MenuPropertyFlags.ON_GROUND));
-            ((EntityAccessor) entity).setWasTouchingWater(MenuPropertyFlags.readProperty(this.data, MenuPropertyFlags.IN_WATER));
-            if (entity instanceof Mob mob && MenuPropertyFlags.readProperty(this.data, MenuPropertyFlags.AGGRESSIVE)) {
+    public Entity create(MenuClientLevel worldIn) {
+        return EntityFactory.loadEntity(this.getEntityType(), this.compound, worldIn, entity -> {
+            entity.setOnGround(MobDataFlag.readProperty(this.data, MobDataFlag.ON_GROUND));
+            ((EntityAccessor) entity).setWasTouchingWater(MobDataFlag.readProperty(this.data, MobDataFlag.IN_WATER));
+            if (entity instanceof Mob mob && MobDataFlag.readProperty(this.data, MobDataFlag.AGGRESSIVE)) {
                 mob.setAggressive(true);
             }
-            if (MenuPropertyFlags.readProperty(this.data, MenuPropertyFlags.CROUCH)) {
+            if (MobDataFlag.readProperty(this.data, MobDataFlag.CROUCH)) {
                 entity.setPose(Pose.CROUCHING);
             }
-            CreateEntityUtil.onInitialSpawn(entity, worldIn, this.compound.isEmpty());
+            EntityFactory.onInitialSpawn(entity, worldIn, this.compound.isEmpty());
             return entity;
         });
     }
 
     private EntityType<?> getEntityType() {
-
-        if (this.type != null) {
-
-            return this.type;
-        }
-
+        if (this.type != null) return this.type;
         List<EntityType<?>> types = ForgeRegistries.ENTITIES.getValues().stream()
-                .filter(type -> type.getCategory() != MobCategory.MISC).collect(Collectors.toList());
-
+                // this is supposed to filter out non-living entities
+                .filter(type -> type.getCategory() != MobCategory.MISC)
+                .collect(Collectors.toList());
         return types.get((int) (types.size() * Math.random()));
     }
 
@@ -169,7 +159,7 @@ public class EntityMenuData {
 
     private JsonObject serializeDisplay() {
         JsonObject jsonobject = new JsonObject();
-        if (this.isTypeSet()) {
+        if (this.type != null) {
             jsonobject.addProperty("scale", this.scale);
             jsonobject.addProperty("xoffset", this.xOffset);
             jsonobject.addProperty("yoffset", this.yOffset);
@@ -182,15 +172,11 @@ public class EntityMenuData {
     }
 
     private JsonObject serializeData() {
-
         JsonObject jsonobject = new JsonObject();
-        if (this.isTypeSet()) {
-
+        if (this.type != null) {
             jsonobject.addProperty("nbt", EntrySerializer.serializeTag(this.compound));
         }
-        EntrySerializer.serializeEnumProperties(jsonobject, MenuPropertyFlags.class, this.data, MenuPropertyFlags::toString, MenuPropertyFlags::getPropertyMask);
-
+        EntrySerializer.serializeEnumProperties(jsonobject, MobDataFlag.class, this.data, MobDataFlag::toString, MobDataFlag::getPropertyMask);
         return jsonobject;
     }
-
 }

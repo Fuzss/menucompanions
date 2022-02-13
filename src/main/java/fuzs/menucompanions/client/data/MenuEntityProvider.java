@@ -1,14 +1,17 @@
-package fuzs.menucompanions.client.storage;
+package fuzs.menucompanions.client.data;
 
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.gson.JsonElement;
-import fuzs.menucompanions.client.storage.entry.EntityMenuData;
+import fuzs.menucompanions.MenuCompanions;
+import fuzs.menucompanions.client.data.entry.MobMenuData;
 import fuzs.menucompanions.config.ClientConfig;
 import fuzs.puzzleslib.json.JsonConfigFileUtil;
 import fuzs.puzzleslib.util.PuzzlesUtil;
 import net.minecraft.world.entity.EntityType;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -16,11 +19,12 @@ import java.io.FileReader;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class MenuEntityProvider {
-    private static final List<EntityMenuData> MENU_ENTRIES = Lists.newArrayList();
-    private static final List<EntityMenuData> DEFAULT_MENU_ENTRIES = Lists.newArrayList(
+    private static final List<MobMenuData> MENU_ENTRIES = Lists.newArrayList();
+    private static final List<MobMenuData> DEFAULT_MENU_ENTRIES = Lists.newArrayList(
             new MenuEntryBuilder().setType(EntityType.PLAYER).setRight().setWeight(31).renderName().build(),
             new MenuEntryBuilder().setType(EntityType.PLAYER).setRight().renderName().setNbt("{ArmorItems:[{Count:1,id:netherite_boots},{Count:1,id:netherite_leggings},{Count:1,id:netherite_chestplate},{Count:1,id:netherite_helmet}]}").build(),
             new MenuEntryBuilder().setType(EntityType.ZOMBIFIED_PIGLIN).setLeft().setWeight(13).build(),
@@ -56,32 +60,44 @@ public class MenuEntityProvider {
     );
 
     @Nullable
-    public static EntityMenuData getRandomEntry(ClientConfig.MenuSide side) {
-        List<EntityMenuData> sidedEntries = MENU_ENTRIES.stream().filter(entry -> entry.validSide(side)).collect(Collectors.toList());
-        return PuzzlesUtil.getRandomEntry(sidedEntries, EntityMenuData::getWeight);
+    public static MobMenuData getRandomEntry(ClientConfig.MenuSide side) {
+        List<MobMenuData> sidedEntries = MENU_ENTRIES.stream().filter(entry -> entry.validSide(side)).collect(Collectors.toList());
+        return PuzzlesUtil.getRandomEntry(sidedEntries, MobMenuData::getWeight);
     }
 
-    public static void removeEntry(EntityMenuData entry) {
+    public static void removeEntry(MobMenuData entry) {
         MENU_ENTRIES.remove(entry);
     }
 
-    @SuppressWarnings("ConstantConditions")
     public static void serialize(File jsonFile) {
+        serializeDataMap(jsonFile, getMobDataMap());
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    private static Multimap<String, MobMenuData> getMobDataMap() {
         // sort directly by path and not by entity type in case entities from different mods have the same name
-        Multimap<String, EntityMenuData> defaultsAsMap = Multimaps.index(DEFAULT_MENU_ENTRIES, entry -> entry.getRawType().getRegistryName().getPath());
-        for (Map.Entry<String, Collection<EntityMenuData>> mapEntry : defaultsAsMap.asMap().entrySet()) {
+        if (MenuCompanions.CONFIG.client().defaultMobs.isEmpty()) {
+            return Multimaps.index(DEFAULT_MENU_ENTRIES, entry -> ForgeRegistries.ENTITIES.getKey(entry.getRawType()).getPath());
+        }
+        return MenuCompanions.CONFIG.client().defaultMobs.stream()
+                .map(type -> new MenuEntryBuilder().setType(type).build())
+                .collect(Multimaps.toMultimap(entry -> ForgeRegistries.ENTITIES.getKey(entry.getRawType()).getPath(), Function.identity(), HashMultimap::create));
+    }
+
+    private static void serializeDataMap(File jsonFile, Multimap<String, MobMenuData> entityIdToData) {
+        for (Map.Entry<String, Collection<MobMenuData>> entry : entityIdToData.asMap().entrySet()) {
             int index = 0;
-            for (EntityMenuData entry : mapEntry.getValue()) {
-                String fileName = String.format("%s%d.json", mapEntry.getKey(), ++index);
-                File file = new File(jsonFile, String.join(File.separator, mapEntry.getKey(), fileName));
-                JsonConfigFileUtil.saveToFile(file, entry.serialize());
+            for (MobMenuData data : entry.getValue()) {
+                String fileName = String.format("%s_%02d.json", entry.getKey(), index++);
+                File file = new File(jsonFile, String.join(File.separator, entry.getKey(), fileName));
+                JsonConfigFileUtil.saveToFile(file, data.serialize());
             }
         }
     }
 
     public static void deserialize(FileReader reader) throws NullPointerException {
         JsonElement jsonelement = JsonConfigFileUtil.GSON.fromJson(reader, JsonElement.class);
-        EntityMenuData deserialize = MenuEntryBuilder.deserialize(jsonelement);
+        MobMenuData deserialize = MenuEntryBuilder.deserialize(jsonelement);
         if (deserialize == null) {
             throw new NullPointerException("Couldn't deserialize file");
         }

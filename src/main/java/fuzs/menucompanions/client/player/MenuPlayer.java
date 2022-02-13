@@ -1,4 +1,4 @@
-package fuzs.menucompanions.client.entity.player;
+package fuzs.menucompanions.client.player;
 
 import com.mojang.authlib.GameProfile;
 import fuzs.menucompanions.mixin.client.accessor.EntityAccessor;

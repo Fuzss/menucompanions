@@ -3,9 +3,9 @@ package fuzs.menucompanions.client.handler;
 import com.mojang.authlib.GameProfile;
 import fuzs.menucompanions.MenuCompanions;
 import fuzs.menucompanions.client.gui.MenuEntityRenderer;
-import fuzs.menucompanions.client.storage.MenuEntityProvider;
-import fuzs.menucompanions.client.storage.entry.EntityMenuData;
-import fuzs.menucompanions.client.world.MenuClientWorld;
+import fuzs.menucompanions.client.data.MenuEntityProvider;
+import fuzs.menucompanions.client.data.entry.MobMenuData;
+import fuzs.menucompanions.client.multiplayer.MenuClientLevel;
 import fuzs.menucompanions.config.ClientConfig;
 import fuzs.puzzleslib.json.JsonConfigFileUtil;
 import net.minecraft.client.Minecraft;
@@ -29,31 +29,40 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
-public class MenuEntityHandler {
-    public static final MenuEntityHandler INSTANCE = new MenuEntityHandler();
+public class MenuMobHandler {
+    public static final MenuMobHandler INSTANCE = new MenuMobHandler(Minecraft.getInstance());
 
-    private final Minecraft minecraft = Minecraft.getInstance();
-    private final MenuEntityRenderer[] entityRenderers;
-    private MenuClientWorld level;
+    private final Minecraft minecraft;
+    private final MenuEntityRenderer[] entityRenderers = new MenuEntityRenderer[2];
+    private MenuClientLevel level;
     private int displayTicks;
 
-    public MenuEntityHandler() {
-        // create sides without world, has to be set later
-        this.entityRenderers = new MenuEntityRenderer[]{new MenuEntityRenderer(this.minecraft), new MenuEntityRenderer(this.minecraft)};
-    }
-
-    public void loadClient() {
-        JsonConfigFileUtil.getAllAndLoad(MenuCompanions.MOD_ID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize, MenuEntityProvider::clear);
-        if (this.createMenuLevel()) {
-            for (MenuEntityRenderer entityRenderer : this.entityRenderers) {
-                entityRenderer.setLevel(this.level);
-            }
+    public MenuMobHandler(Minecraft minecraft) {
+        this.minecraft = minecraft;
+        // create sides without level, has to be set later
+        for (int i = 0; i < this.entityRenderers.length; i++) {
+            this.entityRenderers[i] = new MenuEntityRenderer(minecraft);
         }
     }
 
-    private boolean createMenuLevel() {
+    public void loadMobData() {
+        JsonConfigFileUtil.getAllAndLoad(MenuCompanions.MOD_ID, MenuEntityProvider::serialize, MenuEntityProvider::deserialize, MenuEntityProvider::clear);
+    }
+
+    public boolean loadLevel() {
+        this.level = this.createLevel();
+        if (this.level != null) {
+            for (MenuEntityRenderer entityRenderer : this.entityRenderers) {
+                entityRenderer.setLevel(this.level);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private MenuClientLevel createLevel() {
         try {
-            GameProfile profileIn = this.minecraft.player.getGameProfile();
+            GameProfile profileIn = this.minecraft.getUser().getGameProfile();
             final Connection connection = new Connection(PacketFlow.CLIENTBOUND);
             connection.setProtocol(ConnectionProtocol.PLAY);
             ClientPacketListener packetListener = new ClientPacketListener(this.minecraft, null, connection, profileIn, this.minecraft.createTelemetryManager());
@@ -61,12 +70,11 @@ public class MenuEntityHandler {
             ClientLevel.ClientLevelData levelData = new ClientLevel.ClientLevelData(Difficulty.HARD, false, false);
             // use nether dimension so we can be piglin safe
             DimensionType dimensionType = RegistryAccess.builtin().registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY).getOrThrow(DimensionType.NETHER_LOCATION);
-            this.level = new MenuClientWorld(packetListener, levelData, Level.NETHER, dimensionType, this.minecraft::getProfiler, this.minecraft.levelRenderer);
+            return new MenuClientLevel(packetListener, levelData, Level.NETHER, dimensionType, this.minecraft::getProfiler, this.minecraft.levelRenderer);
         } catch (Exception e) {
-            MenuCompanions.LOGGER.error("unable to create dummy level for rendering menu companions", e);
-            return false;
+            MenuCompanions.LOGGER.error("Unable to create dummy level for rendering mobs", e);
         }
-        return true;
+        return null;
     }
 
     @SubscribeEvent
@@ -87,10 +95,11 @@ public class MenuEntityHandler {
         final Screen screen = evt.getScreen();
         if (screen instanceof PauseScreen) {
             for (ClientConfig.MenuSide side : ClientConfig.MenuSide.sides()) {
-                int sideIndex = side == ClientConfig.MenuSide.RIGHT ? 2 : 0;
-                int xOffset = (screen.width / 2 - 96) / 2 + MenuCompanions.CONFIG.client().menuButtonOffsets[sideIndex];
-                int posX = sideIndex == 0 ? xOffset : screen.width - xOffset;
-                int posY = screen.height / 4 + 116 - MenuCompanions.CONFIG.client().menuButtonOffsets[sideIndex + 1];
+                int posX = (screen.width / 2 - 96) / 2 + MenuCompanions.CONFIG.client().mobOffsets[side.index()];
+                if (side == ClientConfig.MenuSide.RIGHT) {
+                    posX = screen.width - posX;
+                }
+                int posY = screen.height / 4 + 116 - MenuCompanions.CONFIG.client().mobOffsets[side.index() + 1];
                 this.entityRenderers[side.ordinal()].render(posX, posY, MenuCompanions.CONFIG.client().entitySize / 2.0F, -evt.getMouseX(), -evt.getMouseY(), evt.getPartialTicks());
             }
         }
@@ -111,14 +120,14 @@ public class MenuEntityHandler {
     }
 
     private boolean clickLeftSide(int width, int height, double mouseX, double mouseY, int entitySize) {
-        int posX = (width / 2 - 96) / 2 - entitySize / 2 + MenuCompanions.CONFIG.client().menuButtonOffsets[0];
-        int posY = height / 4 + 48 + 80 - entitySize * 4 / 3 - MenuCompanions.CONFIG.client().menuButtonOffsets[1];
+        int posX = (width / 2 - 96) / 2 - entitySize / 2 + MenuCompanions.CONFIG.client().mobOffsets[0];
+        int posY = height / 4 + 48 + 80 - entitySize * 4 / 3 - MenuCompanions.CONFIG.client().mobOffsets[1];
         return this.interactAtSide(ClientConfig.MenuSide.LEFT, posX, posY, mouseX, mouseY, entitySize);
     }
 
     private boolean clickRightSide(int width, int height, double mouseX, double mouseY, int entitySize) {
-        int posX = width - ((width / 2 - 96) / 2 + entitySize / 2 + MenuCompanions.CONFIG.client().menuButtonOffsets[2]);
-        int posY = height / 4 + 48 + 80 - entitySize * 4 / 3 - MenuCompanions.CONFIG.client().menuButtonOffsets[3];
+        int posX = width - ((width / 2 - 96) / 2 + entitySize / 2 + MenuCompanions.CONFIG.client().mobOffsets[2]);
+        int posY = height / 4 + 48 + 80 - entitySize * 4 / 3 - MenuCompanions.CONFIG.client().mobOffsets[3];
         return this.interactAtSide(ClientConfig.MenuSide.RIGHT, posX, posY, mouseX, mouseY, entitySize);
     }
 
@@ -136,7 +145,7 @@ public class MenuEntityHandler {
 
     @SubscribeEvent
     public void onClientTick(final TickEvent.ClientTickEvent evt) {
-        if (evt.phase == TickEvent.Phase.END) return;
+        if (evt.phase != TickEvent.Phase.START) return;
         if (this.minecraft.screen instanceof PauseScreen) {
             int displayTime = MenuCompanions.CONFIG.client().displayTime;
             if (displayTime > 0) {
@@ -167,7 +176,7 @@ public class MenuEntityHandler {
         // check if disabled via config
         if (entityRenderer.isDisabled()) return;
         while (true) {
-            EntityMenuData entry = MenuEntityProvider.getRandomEntry(side);
+            MobMenuData entry = MenuEntityProvider.getRandomEntry(side);
             // entries for side are empty
             if (entry == null) break;
             Entity entity = entry.create(this.level);

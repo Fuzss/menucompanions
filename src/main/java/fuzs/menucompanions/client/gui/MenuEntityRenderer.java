@@ -1,48 +1,39 @@
 package fuzs.menucompanions.client.gui;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import fuzs.menucompanions.MenuCompanions;
-import fuzs.menucompanions.client.handler.MenuEntityBlacklist;
-import fuzs.menucompanions.client.particle.MenuParticleManager;
-import fuzs.menucompanions.client.storage.entry.EntityMenuData;
-import fuzs.menucompanions.client.world.MenuClientWorld;
-import fuzs.menucompanions.mixin.client.accessor.IActiveRenderInfoAccessor;
-import fuzs.menucompanions.mixin.client.accessor.ILivingEntityAccessor;
-import fuzs.menucompanions.mixin.client.accessor.IMobEntityAccessor;
-import com.fuzs.puzzleslib_mc.util.PuzzlesLibUtil;
-import com.mojang.blaze3d.matrix.PoseStack;
+import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Matrix4f;
+import com.mojang.math.Quaternion;
+import com.mojang.math.Vector3f;
+import fuzs.menucompanions.MenuCompanions;
+import fuzs.menucompanions.client.data.entry.MobMenuData;
+import fuzs.menucompanions.client.handler.MenuEntityBlacklist;
+import fuzs.menucompanions.client.multiplayer.MenuClientLevel;
+import fuzs.menucompanions.client.particle.MenuParticleEngine;
+import fuzs.menucompanions.mixin.client.accessor.CameraAccessor;
+import fuzs.menucompanions.mixin.client.accessor.LivingEntityAccessor;
+import fuzs.menucompanions.mixin.client.accessor.MobAccessor;
 import fuzs.puzzleslib.util.PuzzlesUtil;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.audio.ISound;
-import net.minecraft.client.audio.SimpleSound;
-import net.minecraft.client.audio.SoundHandler;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.ActiveRenderInfo;
-import net.minecraft.client.renderer.IRenderTypeBuffer;
-import net.minecraft.client.renderer.entity.EntityRendererManager;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.MobEntity;
-import net.minecraft.entity.passive.BeeEntity;
 import net.minecraft.network.chat.Component;
-import net.minecraft.particles.ParticleTypes;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.Hand;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.Mth;
-import net.minecraft.util.math.vector.Matrix4f;
-import net.minecraft.util.math.vector.Quaternion;
-import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.math.vector.Vector3f;
-import net.minecraft.util.text.ITextComponent;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.Bee;
+import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.tuple.Pair;
 
 import javax.annotation.Nonnull;
@@ -55,8 +46,8 @@ import java.util.stream.Stream;
 public class MenuEntityRenderer implements EntityMenuStateHolder {
     private final Minecraft minecraft;
 
-    private MenuClientWorld level;
-    public MenuParticleManager particleManager;
+    private MenuClientLevel level;
+    public MenuParticleEngine particleManager;
     private EntityMenuState entityMenuState = this.getDefaultState();
     private boolean setInitialAngles;
 
@@ -76,9 +67,9 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
         this.minecraft = minecraft;
     }
 
-    public void setLevel(MenuClientWorld level) {
+    public void setLevel(MenuClientLevel level) {
         this.level = level;
-        this.particleManager = new MenuParticleManager(this.minecraft, level);
+        this.particleManager = new MenuParticleEngine(this.minecraft, level);
     }
 
     @Override
@@ -99,7 +90,7 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
         }
     }
 
-    public void createEntity(@Nonnull Entity entity, @Nonnull EntityMenuData entry, boolean isRightSide) {
+    public void createEntity(@Nonnull Entity entity, @Nonnull MobMenuData entry, boolean isRightSide) {
         this.entity = entity;
         this.copyEntryData(entry, entity, isRightSide);
         this.selfAndPassengers = this.getSelfAndPassengers(entity);
@@ -110,15 +101,12 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
     private Entity[] getSelfAndPassengers(Entity entity) {
         Entity[] selfAndPassengers = entity.getSelfAndPassengers().toArray(Entity[]::new);
         if (!copyAllEntityData(this.selfAndPassengers, selfAndPassengers)) {
-
             this.particleManager.clearEffects();
         }
-
         return selfAndPassengers;
     }
 
-    private void copyEntryData(EntityMenuData entry, Entity entity, boolean isRightSide) {
-
+    private void copyEntryData(MobMenuData entry, Entity entity, boolean isRightSide) {
         this.tick = entry.tick();
         this.walking = entry.walking();
         this.inLove = entry.inLove();
@@ -137,111 +125,106 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
             this.particleManager.tick();
         }
         for (Entity entity : this.selfAndPassengers) {
-            entity.ticksExisted++;
+            entity.tickCount++;
             if (entity instanceof LivingEntity) {
-                this.updateLimbSwing((LivingEntity) entity, this.walking ? (entity.isCrouching() ? 0.18F : 0.6F) : 0.0F);
+                this.calculateEntityAnimation((LivingEntity) entity, this.walking ? (entity.isCrouching() ? 0.18F : 0.6F) : 0.0F);
                 this.spawnNectarParticles(entity);
                 if (((LivingEntity) entity).hurtTime > 0) {
                     --((LivingEntity) entity).hurtTime;
                 }
                 if (this.tick) {
-                    PuzzlesUtil.runOrElse(entity, safeEntity -> ((LivingEntity) safeEntity).livingTick(), safeEntity -> this.tick = false);
+                    PuzzlesUtil.runOrElse(entity, safeEntity -> ((LivingEntity) safeEntity).aiStep(), safeEntity -> this.tick = false);
                 }
             }
             this.spawnHeartParticles(entity);
             if (entity.isPassenger()) {
-                entity.getRidingEntity().updatePassenger(entity);
+                entity.getVehicle().positionRider(entity);
             }
         }
     }
 
-    private void updateLimbSwing(LivingEntity livingEntity, float amount) {
-        livingEntity.prevLimbSwingAmount = livingEntity.limbSwingAmount;
-        livingEntity.limbSwingAmount += (Mth.clamp(amount, 0.0F, 1.0F) - livingEntity.limbSwingAmount) * 0.4F;
-        livingEntity.limbSwing += livingEntity.limbSwingAmount;
+    private void calculateEntityAnimation(LivingEntity livingEntity, float amount) {
+        livingEntity.animationSpeedOld = livingEntity.animationSpeed;
+        livingEntity.animationSpeed += (Mth.clamp(amount, 0.0F, 1.0F) - livingEntity.animationSpeed) * 0.4F;
+        livingEntity.animationPosition += livingEntity.animationSpeed;
     }
 
     private void spawnNectarParticles(Entity entity) {
-
-        if (entity instanceof Bee bee && bee.hasNectar() && this.level.randomom.nextFloat() < 0.05F) {
-
+        if (entity instanceof Bee bee && bee.hasNectar() && this.level.random.nextFloat() < 0.05F) {
             for (int i = 0; i < this.level.random.nextInt(2) + 1; ++i) {
-
-                double posX = Mth.lerp(this.level.random.nextDouble(), entity.getPosX() - 0.3, entity.getPosX() + 0.3);
-                double posY = entity.getPosYHeight(0.5);
-                double posZ = Mth.lerp(this.level.random.nextDouble(), entity.getPosZ() - 0.3, entity.getPosZ() + 0.3);
+                double posX = Mth.lerp(this.level.random.nextDouble(), entity.getX() - 0.3, entity.getX() + 0.3);
+                double posY = entity.getY(0.5);
+                double posZ = Mth.lerp(this.level.random.nextDouble(), entity.getZ() - 0.3, entity.getZ() + 0.3);
                 this.level.addParticle(ParticleTypes.FALLING_NECTAR, posX, posY, posZ, 0.0, 0.0, 0.0);
             }
         }
     }
 
     private void spawnHeartParticles(Entity entity) {
-        if (this.inLove && entity.ticksExisted % 10 == 0) {
+        if (this.inLove && entity.tickCount % 10 == 0) {
             double speedX = this.level.random.nextGaussian() * 0.02;
             double speedY = this.level.random.nextGaussian() * 0.02;
             double speedZ = this.level.random.nextGaussian() * 0.02;
-            this.level.addParticle(ParticleTypes.HEART, entity.getPosXRandom(1.0), entity.getPosYRandom() + 0.5, entity.getPosZRandom(1.0), speedX, speedY, speedZ);
+            this.level.addParticle(ParticleTypes.HEART, entity.getRandomX(1.0), entity.getRandomY() + 0.5, entity.getRandomZ(1.0), speedX, speedY, speedZ);
         }
     }
 
     public void render(int posX, int posY, float scale, float mouseX, float mouseY, float partialTicks) {
         if (this.isNotEnabled()) return;
-        ActiveRenderInfo activerenderinfo = this.minecraft.gameRenderer.getActiveRenderInfo();
-        // allows fire to be rendered on mobs as it requires an active render info object
-        this.minecraft.getRenderManager().cacheActiveRenderInfo(this.level, activerenderinfo, this.entity);
-        ((IActiveRenderInfoAccessor) activerenderinfo).callSetPosition(Vector3d.ZERO);
-        ((IActiveRenderInfoAccessor) activerenderinfo).callSetDirection(0.0F, 0.0F);
-
+        this.enableFireRendering();
         scale *= this.scale;
         posX += this.xOffset;
         posY += this.yOffset;
         // only offset upwards, never downwards
-        posY -= Math.max(0.0F, 0.9F - this.entity.getHeight() / 2.0F) * 30;
+        posY -= Math.max(0.0F, 0.9F - this.entity.getBbHeight() / 2.0F) * 30;
         mouseX += posX;
         mouseY += posY;
         mouseY -= this.entity.getEyeHeight() / 1.62F * 50.0F * this.scale;
-
-        RenderSystem.disableLighting();
-        RenderSystem.pushMatrix();
-        RenderSystem.translatef((float) posX, (float) posY, 50.0F);
-        RenderSystem.scalef(1.0F, 1.0F, -1.0F);
-
+        PoseStack posestack = RenderSystem.getModelViewStack();
+        posestack.pushPose();
+        posestack.translate((float) posX, (float) posY, 50.0F);
+        posestack.scale(1.0F, 1.0F, -1.0F);
+        RenderSystem.applyModelViewMatrix();
         PoseStack matrixstack = new PoseStack();
         matrixstack.scale(scale, scale, scale);
         Quaternion quaternionZ = Vector3f.ZP.rotationDegrees(180.0F);
         Quaternion quaternionX = Vector3f.XP.rotationDegrees((float) Math.atan(mouseY / 40.0F) * 20.0F);
-        quaternionZ.multiply(quaternionX);
-        matrixstack.rotate(quaternionZ);
-
+        quaternionZ.mul(quaternionX);
+        matrixstack.mulPose(quaternionZ);
         this.renderParticles(matrixstack, partialTicks);
+        Lighting.setupForEntityInInventory();
         for (Entity entity : this.selfAndPassengers) {
-
-            Vector3d posVec = entity.getPositionVec().subtract(this.entity.getPositionVec());
-            double eyeVec = entity.getPosYEye() - this.entity.getPosYEye();
+            Vec3 pos = entity.position().subtract(this.entity.position());
+            double eyeHeight = entity.getEyeY() - this.entity.getEyeY();
             if (this.setInitialAngles) {
-
-                setRotationAngles(entity, mouseX, mouseY + (float) posVec.getY() * scale);
+                setRotationAngles(entity, mouseX, mouseY + (float) pos.y() * scale);
                 // run single tick to update passenger position
                 this.tick();
             }
-
-            setRotationAngles(entity, mouseX, mouseY - (float) eyeVec / 1.62F * 50.0F * this.scale);
-            drawEntityOnScreen(matrixstack, posVec.getX(), posVec.getY(), posVec.getZ(), partialTicks, entity, (irendertypebuffer, packedLightIn) -> {
-
+            setRotationAngles(entity, mouseX, mouseY - (float) eyeHeight / 1.62F * 50.0F * this.scale);
+            drawEntityOnScreen(matrixstack, pos.x(), pos.y(), pos.z(), partialTicks, entity, (irendertypebuffer, packedLightIn) -> {
                 if (this.nameplate) {
-
                     matrixstack.pushPose();
                     float downscale = 1.0F / this.scale;
                     matrixstack.scale(downscale, downscale, downscale);
-                    Consumer<Entity> render = safeEntity -> renderName(matrixstack, irendertypebuffer, packedLightIn, safeEntity, (safeEntity.getHeight() + 0.5F) * this.scale);
-                    PuzzlesLibUtil.runOrElse(entity, render, safeEntity -> this.nameplate = false);
+                    Consumer<Entity> render = safeEntity -> renderName(matrixstack, irendertypebuffer, packedLightIn, safeEntity, (safeEntity.getBbHeight() + 0.5F) * this.scale);
+                    PuzzlesUtil.runOrElse(entity, render, safeEntity -> this.nameplate = false);
                     matrixstack.popPose();
                 }
             }, this::setInvalid);
         }
-
         this.setInitialAngles = false;
-        RenderSystem.popMatrix();
+        posestack.popPose();
+        RenderSystem.applyModelViewMatrix();
+        Lighting.setupFor3DItems();
+    }
+
+    private void enableFireRendering() {
+        Camera activerenderinfo = this.minecraft.gameRenderer.getMainCamera();
+        // allows fire to be rendered on mobs as it requires an active render info object
+        this.minecraft.getEntityRenderDispatcher().prepare(this.level, activerenderinfo, this.entity);
+        ((CameraAccessor) activerenderinfo).callSetPosition(Vec3.ZERO);
+        ((CameraAccessor) activerenderinfo).callSetRotation(0.0F, 0.0F);
     }
 
     private void renderParticles(PoseStack matrixstack, float partialTicks) {
@@ -261,51 +244,40 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
         if (this.isNotEnabled()) return;
         this.level.setActiveRenderer(this);
         List<Entity> entities = Stream.of(this.selfAndPassengers).filter(entity -> entity instanceof LivingEntity).collect(Collectors.toList());
-        if (entities.isEmpty()) {
-
-            return;
-        }
-
+        if (entities.isEmpty()) return;
         LivingEntity livingEntity = (LivingEntity) entities.get(this.level.random.nextInt(entities.size()));
         if (playAmbientSounds && livingEntity instanceof Mob) {
-            SoundEvent ambientSound = ((IMobEntityAccessor) livingEntity).callGetAmbientSound();
+            SoundEvent ambientSound = ((MobAccessor) livingEntity).callGetAmbientSound();
             if (this.playLivingSound(soundManager, livingEntity, ambientSound, this.volume)) return;
         }
         if (hurtEntity) {
             if (livingEntity.hurtTime == 0) {
                 livingEntity.hurtTime = 10;
-                livingEntity.limbSwingAmount = 1.5F;
+                livingEntity.animationSpeed = 1.5F;
                 this.spawnDamageParticles(livingEntity);
-                SoundEvent hurtSound = ((ILivingEntityAccessor) livingEntity).callGetHurtSound(DamageSource.GENERIC);
+                SoundEvent hurtSound = ((LivingEntityAccessor) livingEntity).callGetHurtSound(DamageSource.GENERIC);
                 this.playLivingSound(soundManager, livingEntity, hurtSound, this.volume);
             }
-        } else if (!livingEntity.isSwingInProgress) {
-            livingEntity.swingArm(Hand.MAIN_HAND);
+        } else if (!livingEntity.swinging) {
+            livingEntity.swing(InteractionHand.MAIN_HAND);
         }
     }
 
-    private boolean playLivingSound(SoundHandler handler, LivingEntity livingEntity, SoundEvent soundEvent, float volume) {
-
+    private boolean playLivingSound(SoundManager manager, LivingEntity livingEntity, SoundEvent soundEvent, float volume) {
         if (soundEvent != null && !livingEntity.isSilent()) {
-
-            float soundVolume = ((ILivingEntityAccessor) livingEntity).callGetSoundVolume() * volume;
-            float soundPitch = ((ILivingEntityAccessor) livingEntity).callGetSoundPitch();
-            handler.play(new SimpleSound(soundEvent.getName(), livingEntity.getSoundCategory(), soundVolume, soundPitch, false, 0,
-                    ISound.AttenuationType.NONE, livingEntity.getPosX(), livingEntity.getPosY(), livingEntity.getPosZ(), true));
-
+            float soundVolume = ((LivingEntityAccessor) livingEntity).callGetSoundVolume() * volume;
+            float soundPitch = ((LivingEntityAccessor) livingEntity).callGetVoicePitch();
+            manager.play(new SimpleSoundInstance(soundEvent.getLocation(), livingEntity.getSoundSource(), soundVolume, soundPitch, false, 0, SoundInstance.Attenuation.NONE, livingEntity.getX(), livingEntity.getY(), livingEntity.getZ(), true));
             return true;
         }
-
         return false;
     }
 
     private void spawnDamageParticles(LivingEntity livingEntity) {
-
-        for(int i = 0; i < this.level.random.nextInt(5) + 1; i++) {
-
-            double posX = livingEntity.getPosX() + this.level.random.nextGaussian() * 0.2;
-            double posY = livingEntity.getPosYHeight(0.5);
-            double posZ = livingEntity.getPosZ() - 0.3 + this.level.random.nextGaussian() * 0.2;
+        for (int i = 0; i < this.level.random.nextInt(5) + 1; i++) {
+            double posX = livingEntity.getX() + this.level.random.nextGaussian() * 0.2;
+            double posY = livingEntity.getY(0.5);
+            double posZ = livingEntity.getZ() - 0.3 + this.level.random.nextGaussian() * 0.2;
             double xSpeed = this.level.random.nextGaussian() * 0.02;
             double zSpeed = this.level.random.nextGaussian() * 0.02;
             this.level.addParticle(ParticleTypes.DAMAGE_INDICATOR, posX, posY, posZ, xSpeed, 0.0, zSpeed);
@@ -313,87 +285,71 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
     }
 
     private static void setRotationAngles(Entity entity, float mouseX, float mouseY) {
-
-        entity.prevRotationYaw = entity.rotationYaw;
-        entity.prevRotationPitch = entity.rotationPitch;
-        entity.rotationYaw = 180.0F + (float) Math.atan(mouseX / 40.0F) * 40.0F;
-        entity.rotationPitch = -(float) Math.atan(mouseY / 40.0F) * 20.0F;
+        entity.yRotO = entity.getYRot();
+        entity.xRotO = entity.getXRot();
+        entity.setYRot(180.0F + (float) Math.atan(mouseX / 40.0F) * 40.0F);
+        entity.setXRot(-(float) Math.atan(mouseY / 40.0F) * 20.0F);
         if (entity instanceof LivingEntity) {
-
             LivingEntity livingEntity = (LivingEntity) entity;
-            livingEntity.prevRenderYawOffset = livingEntity.renderYawOffset;
-            livingEntity.prevRotationYawHead = livingEntity.rotationYawHead;
-            livingEntity.renderYawOffset = 180.0F + (float) Math.atan(mouseX / 40.0F) * 20.0F;
-            livingEntity.rotationYawHead = entity.rotationYaw;
+            livingEntity.yBodyRotO = livingEntity.yBodyRot;
+            livingEntity.yHeadRotO = livingEntity.yHeadRot;
+            livingEntity.yBodyRot = 180.0F + (float) Math.atan(mouseX / 40.0F) * 20.0F;
+            livingEntity.yHeadRot = entity.getYRot();
         }
     }
 
     private static boolean copyAllEntityData(Entity[] source, @Nonnull Entity[] target) {
-
-        if (source == null) {
-
-            return false;
-        }
-
-        boolean successfulForAll = true;
+        if (source == null) return false;
+        boolean allSuccessful = true;
         int bound = Math.min(source.length, target.length);
         for (int i = 0; i < bound; i++) {
-
             Pair<Entity, Entity> pair = Pair.of(source[i], target[i]);
             if (pair.getLeft().getType() == pair.getRight().getType()) {
-
                 copyEntityData(pair.getLeft(), pair.getRight());
             } else {
-
-                successfulForAll = false;
+                allSuccessful = false;
             }
         }
-
-        return successfulForAll;
+        return allSuccessful;
     }
 
     private static void copyEntityData(Entity source, @Nonnull Entity target) {
-
-        if (source != null) {
-
-            target.ticksExisted = source.ticksExisted;
-            copyRotationAngles(source, target);
-            if (source instanceof LivingEntity && target instanceof LivingEntity) {
-
-                LivingEntity livingSource = (LivingEntity) source;
-                LivingEntity livingTarget = (LivingEntity) target;
-                livingTarget.prevLimbSwingAmount = livingSource.prevLimbSwingAmount;
-                livingTarget.limbSwingAmount = livingSource.limbSwingAmount;
-                livingTarget.limbSwing = livingSource.limbSwing;
-                livingTarget.hurtTime = livingSource.hurtTime;
-            }
+        if (source == null) return;
+        target.tickCount = source.tickCount;
+        copyRotationAngles(source, target);
+        if (source instanceof LivingEntity && target instanceof LivingEntity) {
+            LivingEntity livingSource = (LivingEntity) source;
+            LivingEntity livingTarget = (LivingEntity) target;
+            livingTarget.animationSpeedOld = livingSource.animationSpeedOld;
+            livingTarget.animationSpeed = livingSource.animationSpeed;
+            livingTarget.animationPosition = livingSource.animationPosition;
+            livingTarget.hurtTime = livingSource.hurtTime;
         }
     }
 
     private static void copyRotationAngles(Entity source, Entity target) {
-        target.prevRotationYaw = source.prevRotationYaw;
-        target.prevRotationPitch = source.prevRotationPitch;
-        target.rotationYaw = source.rotationYaw;
-        target.rotationPitch = source.rotationPitch;
+        target.yRotO = source.yRotO;
+        target.xRotO = source.xRotO;
+        target.setYRot(source.getYRot());
+        target.setXRot(source.getXRot());
         if (source instanceof LivingEntity && target instanceof LivingEntity) {
             LivingEntity livingSource = (LivingEntity) source;
             LivingEntity livingTarget = (LivingEntity) target;
-            livingTarget.prevRenderYawOffset = livingSource.prevRenderYawOffset;
-            livingTarget.prevRotationYawHead = livingSource.prevRotationYawHead;
-            livingTarget.renderYawOffset = livingSource.renderYawOffset;
-            livingTarget.rotationYawHead = livingSource.rotationYawHead;
+            livingTarget.yBodyRotO = livingSource.yBodyRotO;
+            livingTarget.yHeadRotO = livingSource.yHeadRotO;
+            livingTarget.yBodyRot = livingSource.yBodyRot;
+            livingTarget.yHeadRot = livingSource.yHeadRot;
         }
     }
 
-    private static void drawEntityOnScreen(PoseStack matrixstack, double posX, double posY, double posZ, float partialTicks, Entity entity, BiConsumer<IRenderTypeBuffer, Integer> renderName, Runnable invalidate) {
-
+    private static void drawEntityOnScreen(PoseStack matrixstack, double posX, double posY, double posZ, float partialTicks, Entity entity, BiConsumer<MultiBufferSource.BufferSource, Integer> renderName, Runnable invalidate) {
         matrixstack.pushPose();
         matrixstack.translate(posX, posY, posZ);
-        EntityRendererManager rendererManager = Minecraft.getInstance().getRenderManager();
+        EntityRenderDispatcher rendererManager = Minecraft.getInstance().getEntityRenderDispatcher();
         rendererManager.setRenderShadow(false);
-        IRenderTypeBuffer.Impl irendertypebuffer = Minecraft.getInstance().getRenderTypeBuffers().getBufferSource();
+        MultiBufferSource.BufferSource irendertypebuffer = Minecraft.getInstance().renderBuffers().bufferSource();
         RenderSystem.runAsFancy(() -> {
-            Consumer<Entity> render = safeEntity -> rendererManager.renderEntityStatic(safeEntity, 0.0, 0.0, 0.0, 0.0F, partialTicks, matrixstack, irendertypebuffer, 15728880);
+            Consumer<Entity> render = safeEntity -> rendererManager.render(safeEntity, 0.0, 0.0, 0.0, 0.0F, partialTicks, matrixstack, irendertypebuffer, 15728880);
             Consumer<Entity> orElse = safeEntity -> {
                 MenuEntityBlacklist.addToBlacklist(safeEntity.getType());
                 invalidate.run();
@@ -401,27 +357,24 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
             PuzzlesUtil.runOrElse(entity, render, orElse);
             renderName.accept(irendertypebuffer, 15728880);
         });
-
-        irendertypebuffer.finish();
+        irendertypebuffer.endBatch();
         rendererManager.setRenderShadow(true);
         matrixstack.popPose();
     }
 
-    private static void renderName(PoseStack matrixStackIn, IRenderTypeBuffer bufferIn, int packedLightIn, Entity entityIn, float renderHeight) {
+    private static void renderName(PoseStack matrixStackIn, MultiBufferSource bufferIn, int packedLightIn, Entity entityIn, float renderHeight) {
         Component displayNameIn = entityIn.getDisplayName();
         float renderOffset = "deadmau5".equals(displayNameIn.getString()) ? -10 : 0;
         matrixStackIn.pushPose();
         matrixStackIn.translate(0.0, renderHeight, 0.0);
         matrixStackIn.scale(-0.025F, -0.025F, 0.025F);
-        Matrix4f matrix4f = matrixStackIn.getLast().getMatrix();
-
-        float backgroundOpacity = Minecraft.getInstance().gameSettings.getTextBackgroundOpacity(0.25F);
+        Matrix4f matrix4f = matrixStackIn.last().pose();
+        float backgroundOpacity = Minecraft.getInstance().options.getBackgroundOpacity(0.25F);
         int alpha = (int) (backgroundOpacity * 255.0F) << 24;
-        FontRenderer fontrenderer = Minecraft.getInstance().fontRenderer;
-        int textWidth = -fontrenderer.getStringPropertyWidth(displayNameIn) / 2;
-        fontrenderer.func_243247_a(displayNameIn, textWidth, renderOffset, 553648127, false, matrix4f, bufferIn, true, alpha, packedLightIn);
-        fontrenderer.func_243247_a(displayNameIn, textWidth, renderOffset, -1, false, matrix4f, bufferIn, false, 0, packedLightIn);
+        Font fontrenderer = Minecraft.getInstance().font;
+        int textWidth = -fontrenderer.width(displayNameIn) / 2;
+        fontrenderer.drawInBatch(displayNameIn, textWidth, renderOffset, 553648127, false, matrix4f, bufferIn, true, alpha, packedLightIn);
+        fontrenderer.drawInBatch(displayNameIn, textWidth, renderOffset, -1, false, matrix4f, bufferIn, false, 0, packedLightIn);
         matrixStackIn.popPose();
-    }
-
+    }                 
 }

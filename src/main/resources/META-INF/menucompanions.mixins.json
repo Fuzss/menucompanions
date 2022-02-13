@@ -7,12 +7,12 @@
   "mixins": [
   ],
   "client": [
+    "client.accessor.CameraAccessor",
     "client.accessor.EntityAccessor",
+    "client.accessor.LivingEntityAccessor",
+    "client.accessor.MobAccessor",
     "client.accessor.ParticleEngineAccessor",
-    "client.accessor.PlayerAccessor",
-    "client.accessor.IMobEntityAccessor",
-    "client.accessor.ILivingEntityAccessor",
-    "client.accessor.IActiveRenderInfoAccessor"
+    "client.accessor.PlayerAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -32,15 +32,14 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 
-@OnlyIn(Dist.CLIENT)
-public class MenuParticleManager {
+public class MenuParticleEngine {
     private final ClientLevel level;
     private final TextureManager textureManager;
     private final ParticleEngine particleEngine;
     private final Map<ParticleRenderType, Queue<Particle>> particles = Maps.newIdentityHashMap();
     private final Queue<Particle> particlesToAdd = Queues.newArrayDeque();
 
-    public MenuParticleManager(Minecraft minecraft, ClientLevel level) {
+    public MenuParticleEngine(Minecraft minecraft, ClientLevel level) {
         this.level = level;
         this.textureManager = minecraft.textureManager;
         this.particleEngine = minecraft.particleEngine;

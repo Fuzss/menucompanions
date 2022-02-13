@@ -1,4 +1,4 @@
-package fuzs.menucompanions.client.world;
+package fuzs.menucompanions.client.multiplayer;
 
 import fuzs.menucompanions.client.gui.MenuEntityRenderer;
 import net.minecraft.CrashReport;
@@ -24,10 +24,10 @@ import javax.annotation.Nonnull;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class MenuClientWorld extends ClientLevel implements ServerLevelAccessor {
+public class MenuClientLevel extends ClientLevel implements ServerLevelAccessor {
     private MenuEntityRenderer activeRenderer;
 
-    public MenuClientWorld(ClientPacketListener connection, ClientLevel.ClientLevelData worldInfo, ResourceKey<Level> dimension, DimensionType dimensionType, Supplier<ProfilerFiller> profiler, LevelRenderer worldRenderer) {
+    public MenuClientLevel(ClientPacketListener connection, ClientLevel.ClientLevelData worldInfo, ResourceKey<Level> dimension, DimensionType dimensionType, Supplier<ProfilerFiller> profiler, LevelRenderer worldRenderer) {
         super(connection, worldInfo, dimension, dimensionType, 0, 0, profiler, worldRenderer, false, 0L);
     }
 
