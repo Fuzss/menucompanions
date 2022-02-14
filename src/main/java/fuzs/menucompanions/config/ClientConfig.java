@@ -18,8 +18,6 @@ public class ClientConfig extends AbstractConfig {
     public int entitySize;
     // 0: left side x offset, 1: left side y offset, 2: right side x offset, 3: right side y offset
     public final int[] mobOffsets = new int[4];
-    // 0: button reload x offset, 1: button reload y offset
-    public final int[] reloadOffsets = new int[2];
     public boolean playAmbientSounds;
     public boolean hurtEntity;
     private List<String> entityBlacklistRaw;
@@ -27,6 +25,7 @@ public class ClientConfig extends AbstractConfig {
     public MenuSide entitySide;
     private List<String> defaultMobsRaw;
     public boolean onlyPauseScreen;
+    public boolean alwaysNewMobs;
 
     public Set<EntityType<?>> entityBlacklist;
     public Set<EntityType<?>> defaultMobs;
@@ -48,12 +47,11 @@ public class ClientConfig extends AbstractConfig {
         final ForgeConfigSpec.ConfigValue<List<String>> entityBlacklist = builder.comment("Blacklist to prevent certain mobs from rendering. Problematic entities will be added automatically upon being detected.", "If a lot of or even all mobs end up here, another mod probably is using incompatible mixins. In that case please report this along with your log to the issue tracker!").define("entity_blacklist", EntryCollectionBuilder.getKeyList(ForgeRegistries.ENTITIES, EntityType.ENDER_DRAGON, EntityType.EVOKER_FANGS, EntityType.FALLING_BLOCK, EntityType.AREA_EFFECT_CLOUD, EntityType.ITEM, EntityType.FISHING_BOBBER));
         MenuEntityBlacklist.setEntityBlacklist(entityBlacklist);
         saveCallback.accept(entityBlacklist, v -> this.entityBlacklistRaw = v);
-        saveCallback.accept(builder.comment("Whether to add a menu button for reloading menu companions and where to place it. Mainly useful when configuring new companions.").defineEnum("reload_button", ReloadMode.NO_BUTTON), v -> this.reloadMode = v);
-        saveCallback.accept(builder.comment("Reload button offset on x-axis from original position.").defineInRange("reload_x_offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.reloadOffsets[0] = v);
-        saveCallback.accept(builder.comment("Reload button offset on y-axis from original position.").defineInRange("reload_y_offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE), v -> this.reloadOffsets[1] = v);
-        saveCallback.accept(builder.comment("Choose which side menu companions can be shown at.").defineEnum("entity_side", ClientConfig.MenuSide.BOTH), v -> this.entitySide = v);
+        saveCallback.accept(builder.comment("Whether to add a menu button for reloading menu companions and where to place it. Mainly useful when configuring new mobs.", "The button will only be added to the pause screen, not any other screen mobs also show on.").defineEnum("reload_button", ReloadMode.NO_BUTTON), v -> this.reloadMode = v);
+        saveCallback.accept(builder.comment("Choose which side menu mobs can be shown at.").defineEnum("entity_side", ClientConfig.MenuSide.BOTH), v -> this.entitySide = v);
         saveCallback.accept(builder.comment("Mobs to initially generate json config files for so their values can be further customized. They will only be generated when no config files are found.", "When this option is left blank, an internal set of default mobs will be generated instead.").define("default_mobs", Lists.<String>newArrayList()),v -> this.defaultMobsRaw = v);
         saveCallback.accept(builder.comment("Only show mobs on pause screen and not within sub menus.", "Mobs can only be shown on sub screens when there is enough room.").define("only_pause_screen", false), v -> this.onlyPauseScreen = v);
+        saveCallback.accept(builder.comment("Create new menu mobs for every new screen opened that shows them.", "Otherwise mobs are only refreshed on the pause screen or using the reload button.").define("always_new_mobs", false), v -> this.alwaysNewMobs = v);
     }
 
     @Override

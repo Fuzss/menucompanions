@@ -76,7 +76,7 @@ public class EntityFactory {
                 .map(entityType -> create(worldIn, entityType)), entity -> {
             try {
                 if (entity instanceof NeutralMob) {
-                    // world is casted to ServerWorld in IAngerable, so we need to handle those mobs manually
+                    // world is cast to ServerWorld in IAngerable, so we need to handle those mobs manually
                     readAngerableAdditional(entity, compound);
                 } else {
                     entity.load(compound);
@@ -111,10 +111,6 @@ public class EntityFactory {
     }
 
     public static void onInitialSpawn(Entity entity, ServerLevelAccessor worldIn, boolean noNbt) {
-//        // prevents crash in sprite renderers
-//        entity.ticksExisted = 2;
-//        // prevents Entity#move from running as it calls a block tag which isn't registered yet
-//        entity.noClip = true;
         if (noNbt && entity instanceof Mob mob) {
             try {
                 // set difficulty very hard so gear is more likely to appear

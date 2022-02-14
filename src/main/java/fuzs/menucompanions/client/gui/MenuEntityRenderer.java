@@ -7,11 +7,10 @@ import com.mojang.math.Matrix4f;
 import com.mojang.math.Quaternion;
 import com.mojang.math.Vector3f;
 import fuzs.menucompanions.MenuCompanions;
-import fuzs.menucompanions.data.entry.MobMenuData;
 import fuzs.menucompanions.client.handler.MenuEntityBlacklist;
 import fuzs.menucompanions.client.multiplayer.MenuClientLevel;
 import fuzs.menucompanions.client.particle.MenuParticleEngine;
-import fuzs.menucompanions.mixin.client.accessor.CameraAccessor;
+import fuzs.menucompanions.data.entry.MobMenuData;
 import fuzs.menucompanions.mixin.client.accessor.LivingEntityAccessor;
 import fuzs.menucompanions.mixin.client.accessor.MobAccessor;
 import fuzs.puzzleslib.util.PuzzlesUtil;
@@ -45,6 +44,7 @@ import java.util.stream.Stream;
 
 public class MenuEntityRenderer implements EntityMenuStateHolder {
     private final Minecraft minecraft;
+    private final Camera camera = new Camera();
 
     private MenuClientLevel level;
     public MenuParticleEngine particleManager;
@@ -111,8 +111,8 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
         this.walking = entry.walking();
         this.inLove = entry.inLove();
         this.scale = entry.calculateScale(entity);
-        this.xOffset = (isRightSide ? -1 : 1) * entry.getXOffset();
-        this.yOffset = -entry.getYOffset();
+        this.xOffset = (isRightSide ? -1 : 1) * entry.getOffsetX();
+        this.yOffset = -entry.getOffsetY();
         this.nameplate = entry.showNameplate();
         this.particles = entry.showParticles();
         this.volume = entry.getSoundVolume();
@@ -171,7 +171,8 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
 
     public void render(int posX, int posY, float scale, float mouseX, float mouseY, float partialTicks) {
         if (this.isNotEnabled()) return;
-        this.enableFireRendering();
+        // allows fire to be rendered on mobs as it requires an active render info object
+        this.minecraft.getEntityRenderDispatcher().prepare(this.level, this.camera, this.entity);
         scale *= this.scale;
         posX += this.xOffset;
         posY += this.yOffset;
@@ -219,24 +220,15 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
         Lighting.setupFor3DItems();
     }
 
-    private void enableFireRendering() {
-        Camera activerenderinfo = this.minecraft.gameRenderer.getMainCamera();
-        // allows fire to be rendered on mobs as it requires an active render info object
-        this.minecraft.getEntityRenderDispatcher().prepare(this.level, activerenderinfo, this.entity);
-        ((CameraAccessor) activerenderinfo).callSetPosition(Vec3.ZERO);
-        ((CameraAccessor) activerenderinfo).callSetRotation(0.0F, 0.0F);
-    }
-
     private void renderParticles(PoseStack matrixstack, float partialTicks) {
-        if (this.particles) {
-            try {
-                matrixstack.pushPose();
-                this.particleManager.render(matrixstack, this.minecraft.gameRenderer.lightTexture(), this.minecraft.gameRenderer.getMainCamera(), partialTicks);
-                matrixstack.popPose();
-            } catch (Exception e) {
-                MenuCompanions.LOGGER.warn("Exception rendering particle, skipping until reload");
-                this.particles = false;
-            }
+        if (!this.particles) return;
+        try {
+            matrixstack.pushPose();
+            this.particleManager.render(matrixstack, this.minecraft.gameRenderer.lightTexture(), this.minecraft.gameRenderer.getMainCamera(), partialTicks);
+            matrixstack.popPose();
+        } catch (Exception e) {
+            MenuCompanions.LOGGER.warn("Exception rendering particle, skipping until reload");
+            this.particles = false;
         }
     }
 
@@ -289,8 +281,7 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
         entity.xRotO = entity.getXRot();
         entity.setYRot(180.0F + (float) Math.atan(mouseX / 40.0F) * 40.0F);
         entity.setXRot(-(float) Math.atan(mouseY / 40.0F) * 20.0F);
-        if (entity instanceof LivingEntity) {
-            LivingEntity livingEntity = (LivingEntity) entity;
+        if (entity instanceof LivingEntity livingEntity) {
             livingEntity.yBodyRotO = livingEntity.yBodyRot;
             livingEntity.yHeadRotO = livingEntity.yHeadRot;
             livingEntity.yBodyRot = 180.0F + (float) Math.atan(mouseX / 40.0F) * 20.0F;
@@ -317,9 +308,7 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
         if (source == null) return;
         target.tickCount = source.tickCount;
         copyRotationAngles(source, target);
-        if (source instanceof LivingEntity && target instanceof LivingEntity) {
-            LivingEntity livingSource = (LivingEntity) source;
-            LivingEntity livingTarget = (LivingEntity) target;
+        if (source instanceof LivingEntity livingSource && target instanceof LivingEntity livingTarget) {
             livingTarget.animationSpeedOld = livingSource.animationSpeedOld;
             livingTarget.animationSpeed = livingSource.animationSpeed;
             livingTarget.animationPosition = livingSource.animationPosition;
@@ -332,9 +321,7 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
         target.xRotO = source.xRotO;
         target.setYRot(source.getYRot());
         target.setXRot(source.getXRot());
-        if (source instanceof LivingEntity && target instanceof LivingEntity) {
-            LivingEntity livingSource = (LivingEntity) source;
-            LivingEntity livingTarget = (LivingEntity) target;
+        if (source instanceof LivingEntity livingSource && target instanceof LivingEntity livingTarget) {
             livingTarget.yBodyRotO = livingSource.yBodyRotO;
             livingTarget.yHeadRotO = livingSource.yHeadRotO;
             livingTarget.yBodyRot = livingSource.yBodyRot;
@@ -365,16 +352,18 @@ public class MenuEntityRenderer implements EntityMenuStateHolder {
     private static void renderName(PoseStack matrixStackIn, MultiBufferSource bufferIn, int packedLightIn, Entity entityIn, float renderHeight) {
         Component displayNameIn = entityIn.getDisplayName();
         float renderOffset = "deadmau5".equals(displayNameIn.getString()) ? -10 : 0;
-        matrixStackIn.pushPose();
-        matrixStackIn.translate(0.0, renderHeight, 0.0);
-        matrixStackIn.scale(-0.025F, -0.025F, 0.025F);
-        Matrix4f matrix4f = matrixStackIn.last().pose();
-        float backgroundOpacity = Minecraft.getInstance().options.getBackgroundOpacity(0.25F);
-        int alpha = (int) (backgroundOpacity * 255.0F) << 24;
-        Font fontrenderer = Minecraft.getInstance().font;
-        int textWidth = -fontrenderer.width(displayNameIn) / 2;
-        fontrenderer.drawInBatch(displayNameIn, textWidth, renderOffset, 553648127, false, matrix4f, bufferIn, true, alpha, packedLightIn);
-        fontrenderer.drawInBatch(displayNameIn, textWidth, renderOffset, -1, false, matrix4f, bufferIn, false, 0, packedLightIn);
-        matrixStackIn.popPose();
-    }                 
+        for (int i = 0; i < 4; i++) {
+            matrixStackIn.pushPose();
+            matrixStackIn.translate(0.0, renderHeight, 0.0);
+            matrixStackIn.scale(-0.025F, -0.025F, 0.025F);
+            Matrix4f matrix4f = matrixStackIn.last().pose();
+            float backgroundOpacity = Minecraft.getInstance().options.getBackgroundOpacity(0.25F);
+            int alpha = (int) (backgroundOpacity * 255.0F) << 24;
+            Font font = Minecraft.getInstance().font;
+            int textWidth = -font.width(displayNameIn) / 2;
+            font.drawInBatch(displayNameIn, textWidth, renderOffset - i * 15, 553648127, false, matrix4f, bufferIn, true, alpha, packedLightIn);
+            font.drawInBatch(displayNameIn, textWidth, renderOffset - i * 15, -1, false, matrix4f, bufferIn, false, 0, packedLightIn);
+            matrixStackIn.popPose();
+        }
+    }
 }

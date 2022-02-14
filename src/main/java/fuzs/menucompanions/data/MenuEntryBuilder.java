@@ -33,7 +33,6 @@ public class MenuEntryBuilder {
 
     public MobMenuData build() {
         CompoundTag compound = this.type != null ? EntrySerializer.deserializeTag(this.nbt, this.type) : new CompoundTag();
-        this.weight = Math.max(1, this.weight);
         if (this.type != null) {
             if (this.scale <= 0.0F) {
                 this.scale = MobMenuData.calculateScale(this.type.getWidth(), this.type.getHeight());
@@ -103,6 +102,7 @@ public class MenuEntryBuilder {
     }
 
     public MenuEntryBuilder setWeight(int weight) {
+        if (weight < 1) throw new IllegalArgumentException("Weight must be 1 at least");
         this.weight = weight;
         return this;
     }
@@ -162,8 +162,8 @@ public class MenuEntryBuilder {
             builder.setData((byte) EntrySerializer.deserializeEnumProperties(dataobject, MobDataFlag.class, MobDataFlag::toString, MobDataFlag::getPropertyMask));
             if (type != null) {
                 builder.setScale(GsonHelper.getAsFloat(displayobject, "scale"));
-                builder.setXOffset(GsonHelper.getAsInt(displayobject, "xoffset"));
-                builder.setYOffset(GsonHelper.getAsInt(displayobject, "yoffset"));
+                builder.setXOffset(GsonHelper.getAsInt(displayobject, "x_offset"));
+                builder.setYOffset(GsonHelper.getAsInt(displayobject, "y_offset"));
                 builder.setNbt(GsonHelper.getAsString(dataobject, "nbt"));
                 if (type == EntityType.PLAYER) {
                     JsonObject playerobject = GsonHelper.getAsJsonObject(jsonobject, MobMenuData.PLAYER_FLAG);

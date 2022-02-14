@@ -31,12 +31,10 @@ public class ReloadButtonHandler {
     private void addReloadButton(List<GuiEventListener> widgets, Consumer<GuiEventListener> addWidget, ClientConfig.ReloadMode reloadMode) {
         AbstractWidget parentWidget = this.getReloadParentWidget(widgets, reloadMode);
         if (parentWidget == null) return;
-        int posX = parentWidget.x + (reloadMode == ClientConfig.ReloadMode.LEFT ? -24 + MenuCompanions.CONFIG.client().reloadOffsets[0] : parentWidget.getWidth() + 4 - MenuCompanions.CONFIG.client().reloadOffsets[0]);
-        int posY = parentWidget.y - MenuCompanions.CONFIG.client().reloadOffsets[1];
-        addWidget.accept(new ImageButton(posX, posY, 20, 20, 0, 0, 20, RELOAD_TEXTURES, 32, 64, button -> {
+        addWidget.accept(new ImageButton(parentWidget.x + (reloadMode == ClientConfig.ReloadMode.LEFT ? -24 : parentWidget.getWidth() + 4), parentWidget.y, 20, 20, 0, 0, 20, RELOAD_TEXTURES, 32, 64, button -> {
             MenuMobHandler.INSTANCE.resetDisplayTicks();
             MenuMobHandler.INSTANCE.loadMobData();
-            MenuCompanions.LOGGER.info("Reloaded menu companions config files");
+            MenuCompanions.LOGGER.info("Reloaded {} config files", MenuCompanions.MOD_NAME);
             MenuMobHandler.INSTANCE.setUpdateRequired();
         }, new TranslatableComponent("narrator.button.reload")));
     }

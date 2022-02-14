@@ -26,21 +26,21 @@ public class MobMenuData {
     protected final CompoundTag compound;
     protected final byte data;
     private final float scale;
-    private final int xOffset;
-    private final int yOffset;
+    private final int offsetX;
+    private final int offsetY;
     private final boolean nameplate;
     private final boolean particles;
     private final int weight;
     private final float volume;
     private final ClientConfig.MenuSide side;
 
-    public MobMenuData(@Nullable EntityType<?> type, CompoundTag compound, byte data, float scale, int xOffset, int yOffset, boolean nameplate, boolean particles, int weight, float volume, ClientConfig.MenuSide side) {
+    public MobMenuData(@Nullable EntityType<?> type, CompoundTag compound, byte data, float scale, int offsetX, int offsetY, boolean nameplate, boolean particles, int weight, float volume, ClientConfig.MenuSide side) {
         this.type = type;
         this.compound = compound;
         this.data = data;
         this.scale = scale;
-        this.xOffset = xOffset;
-        this.yOffset = yOffset;
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
         this.nameplate = nameplate;
         this.particles = particles;
         this.weight = weight;
@@ -83,12 +83,12 @@ public class MobMenuData {
         return 1.0F;
     }
 
-    public int getXOffset() {
-        return this.xOffset;
+    public int getOffsetX() {
+        return this.offsetX;
     }
 
-    public int getYOffset() {
-        return this.yOffset;
+    public int getOffsetY() {
+        return this.offsetY;
     }
 
     public boolean showNameplate() {
@@ -161,8 +161,8 @@ public class MobMenuData {
         JsonObject jsonobject = new JsonObject();
         if (this.type != null) {
             jsonobject.addProperty("scale", this.scale);
-            jsonobject.addProperty("xoffset", this.xOffset);
-            jsonobject.addProperty("yoffset", this.yOffset);
+            jsonobject.addProperty("x_offset", this.offsetX);
+            jsonobject.addProperty("y_offset", this.offsetY);
         }
         jsonobject.addProperty("nameplate", this.nameplate);
         jsonobject.addProperty("particles", this.particles);

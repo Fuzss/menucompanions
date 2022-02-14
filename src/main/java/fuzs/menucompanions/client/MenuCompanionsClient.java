@@ -18,27 +18,17 @@ public class MenuCompanionsClient {
     @SubscribeEvent
     public static void onConstructMod(final FMLConstructModEvent evt) {
         registerHandlers();
-        registerModCompat();
     }
 
     private static void registerHandlers() {
         final ReloadButtonHandler reloadButtonHandler = new ReloadButtonHandler();
         MinecraftForge.EVENT_BUS.addListener(reloadButtonHandler::onInitScreen);
         MinecraftForge.EVENT_BUS.addListener(MenuMobHandler.INSTANCE::onScreenOpen);
+        MinecraftForge.EVENT_BUS.addListener(MenuMobHandler.INSTANCE::onWorldUnload);
         MinecraftForge.EVENT_BUS.addListener(MenuMobHandler.INSTANCE::onDrawScreen);
         MinecraftForge.EVENT_BUS.addListener(MenuMobHandler.INSTANCE::onMouseClicked);
         MinecraftForge.EVENT_BUS.addListener(MenuMobHandler.INSTANCE::onClientTick);
         MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, MenuMobHandler.INSTANCE::onRenderNameplate);
-    }
-
-    private static void registerModCompat() {
-        // will prevent other mods from hooking into the player renderer on the main menu
-        MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, (RenderPlayerEvent.Pre evt) -> {
-            if (evt.getPlayer() instanceof MenuPlayer) evt.setCanceled(true);
-        });
-        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, true, (RenderPlayerEvent.Pre evt) -> {
-            if (evt.getPlayer() instanceof MenuPlayer) evt.setCanceled(false);
-        });
     }
 
     @SubscribeEvent
